@@ -19,6 +19,9 @@ export interface Action<Input, Output = Input>
     Unit<Input> {
   filter: (fn: ChainFn<Output, boolean>) => Action<Input, Output>;
   map: <Mapped>(fn: ChainFn<Output, Mapped>) => Action<Input, Mapped>;
+  target: <Result, Err>(
+    fn: ChainFn<Output, Result>,
+  ) => AsyncAction<Input, Result, Output, Err>;
 }
 
 type ActionPromise<
@@ -44,13 +47,6 @@ export type AsyncActionCall<Input, Params, Result, Err = Error> = (
 export interface AsyncAction<Input, Result, Params = Input, Err = Error>
   extends AsyncActionCall<Input, Params, Result, Err>,
     Unit<Params> {
-  map: <Mapped>(
-    target: ChainFn<Result, Mapped>,
-    match?: (params: Result, prev: Result) => boolean,
-  ) => AsyncAction<Input, Mapped, Result, Err>;
-  filter: (
-    filter: ChainFn<Result, boolean>,
-  ) => AsyncAction<Input, Result, Params, Err>;
   done: {
     watch: (watcher: (result: Result, params: Params) => void) => Subscription;
   };
