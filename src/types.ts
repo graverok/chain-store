@@ -1,18 +1,38 @@
-export type Args<Params> = Params extends Array<unknown> ? Params : [Params];
+type ActionCall<Params, Result extends unknown = void> = (
+  params: Params,
+) => Result;
 
-export type Subscription = {
-  dispose: VoidFunction;
+type ActionPromise<
+  Params,
+  Result,
+  Error,
+  Methods = ActionPromiseMethods<Params, Result, Error>,
+  Remaining extends keyof Methods = keyof Methods,
+> = {
+  [K in Remaining]: (
+    fn: Methods[K],
+  ) => ActionPromise<Params, Result, Error, Methods, Exclude<Remaining, K>>;
 };
 
-export interface Unit<Params> {
-  watch: (watcher: (...args: Args<Params>) => void) => Subscription;
-}
+export type ActionPromiseMethods<Params, Result, Error> = {
+  done: (result: Result, params: Params) => void;
+  fail: (error: Error, params: Params) => void;
+  finish: (params: Params) => void;
+};
+
+export type Args<Params> = Params extends Array<unknown> ? Params : [Params];
 
 export type ChainFn<Input, Output> = (
   params: Input,
 ) => Output | Promise<Output>;
 
-export type ActionCall<Params> = (params: Params) => void;
+export interface Subscription {
+  dispose: VoidFunction;
+}
+
+export interface Unit<Params> {
+  watch: (watcher: (...args: Args<Params>) => void) => Subscription;
+}
 
 export interface Action<Input, Output = Input>
   extends ActionCall<Input>,
@@ -24,28 +44,8 @@ export interface Action<Input, Output = Input>
   ) => AsyncAction<Input, Result, Output, Err>;
 }
 
-type ActionPromise<
-  Params,
-  Result,
-  Error,
-  Methods = {
-    done: (result: Result, params: Params) => void;
-    fail: (error: Error, params: Params) => void;
-    finish: (params: Params) => void;
-  },
-  Remaining extends keyof Methods = keyof Methods,
-> = {
-  [K in Remaining]: (
-    fn: Methods[K],
-  ) => ActionPromise<Params, Result, Error, Methods, Exclude<Remaining, K>>;
-};
-
-export type AsyncActionCall<Input, Params, Result, Err = Error> = (
-  input: Input,
-) => ActionPromise<Params, Result, Err>;
-
 export interface AsyncAction<Input, Result, Params = Input, Err = Error>
-  extends AsyncActionCall<Input, Params, Result, Err>,
+  extends ActionCall<Input, ActionPromise<Params, Result, Err>>,
     Unit<Params> {
   done: {
     watch: (watcher: (result: Result, params: Params) => void) => Subscription;
