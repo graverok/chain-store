@@ -14,12 +14,11 @@ export type ChainFn<Input, Output> = (
 
 export type ActionCall<Params> = (params: Params) => void;
 
-export interface Action<Input> extends ActionCall<Input>, Unit<Input> {
-  filter: (filter: ChainFn<Input, boolean>) => Action<Input>;
-  map: <Mapped, Err = Error>(
-    target: ChainFn<Input, Mapped>,
-    match?: (input: Input, prev: Input) => boolean,
-  ) => AsyncAction<Input, Mapped, Err>;
+export interface Action<Input, Output = Input>
+  extends ActionCall<Input>,
+    Unit<Input> {
+  filter: (fn: ChainFn<Output, boolean>) => Action<Input, Output>;
+  map: <Mapped>(fn: ChainFn<Output, Mapped>) => Action<Input, Mapped>;
 }
 
 type ActionPromise<

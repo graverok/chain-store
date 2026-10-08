@@ -1,28 +1,37 @@
-import {
-  Action,
-  Args,
-  AsyncAction,
-  ChainFn,
-  Store,
-  Subscription,
-  Unit,
-} from "./types";
+import { Action, Args, ChainFn, Store, Subscription, Unit } from "./types";
 
-const initAction = <Input>(
+const voider = () => void 0;
+
+const resolver = <I, R>(
+  input: I,
+  fn: ((input: I) => R | Promise<R>) | void,
+  resolve: (r: R) => void,
+) => {
+  if (!fn) return resolve(input as unknown as R);
+  const res = fn(input);
+  if (!(res instanceof Promise)) return resolve(res);
+  res.then(resolve).catch(voider);
+};
+
+const initAction = <Input, Output = Input>(
   callers: ((input: Input) => unknown)[],
-  config?: { filter?: ChainFn<Input, boolean> },
+  config?: {
+    filter?: ChainFn<Input, boolean>;
+    map?: ChainFn<Input, Output>;
+  },
 ) => {
   const emitter = createEmitter<Input>();
 
-  const exec = (params: Input) => {
+  const exec = (params: Output) => {
     emitter.emit("watch")(params);
     return;
   };
 
-  const call = async (input: Input) => {
-    if (!config?.filter) return exec(input);
+  const call = (input: Input) => {
     try {
-      (await config.filter(input)) && exec(input);
+      resolver(input, config?.map, (params) => {
+        resolver(params, config?.filter, (res) => res && exec(params));
+      });
     } catch {
       return;
     }
@@ -37,152 +46,155 @@ const initAction = <Input>(
 
   return Object.assign(action, {
     ...emitter.init("watch"),
-    map: <Mapped, Err = Error>(
-      fn: ChainFn<Input, Mapped>,
-      match?: (params: Input, pending: Input) => boolean,
-    ) => {
+    map: <Mapped>(fn: ChainFn<Output, Mapped>) => {
+      if (!config?.filter && !config?.map)
+        return initAction<Input, Mapped>(callers, {
+          map: fn as unknown as ChainFn<Input, Mapped>,
+        });
+
+      const filterFn = (p: Output) => {
+        const filtered = config.filter?.(p) ?? true;
+        if (!filtered) throw new Error();
+        if (!(filtered instanceof Promise)) return fn(p);
+        return filtered.then((res) => {
+          if (!res) throw new Error();
+          return fn(p);
+        });
+      };
+
+      return initAction<Input, Mapped>(callers, {
+        map: (input: Input) => {
+          const params = config.map?.(input) ?? (input as unknown as Output);
+
+          if (!(params instanceof Promise)) return filterFn(params);
+          return params.then((params) => filterFn(params));
+        },
+      });
+    },
+    filter: (fn: ChainFn<Output, boolean>) => {
       if (!config?.filter)
-        return initAsyncAction(callers, { target: fn, match }) as AsyncAction<
-          Input,
-          Mapped,
-          Input,
-          Err
-        >;
+        return initAction<Input, Output>(callers, { ...config, filter: fn });
 
-      return initAsyncAction(callers, {
-        target: fn,
-        match,
-        map: async (input: Input) => {
-          const blocked = !(await (config.filter as ChainFn<Input, boolean>)(
-            input,
-          ));
-          if (blocked) throw new Error();
-          return input;
-        },
-      }) as AsyncAction<Input, Mapped, Input, Err>;
-    },
-    filter: (fn: ChainFn<Input, boolean>) => {
-      if (!config?.filter) return initAction(callers, { filter: fn });
-
-      return initAction(callers, {
-        filter: async (input: Input) => {
-          const blocked = !(await (config.filter as ChainFn<Input, boolean>)(
-            input,
-          ));
-          return !blocked && fn(input);
-        },
-      }) as Action<Input>;
-    },
-  }) as Action<Input>;
-};
-
-type Events = {
-  done: <R, P>(result: R, params: P) => void;
-  fail: <E, P>(error: E, params: P) => void;
-  finish: <P>(params: P) => void;
-};
-
-const initAsyncAction = <Input, Result, Err = Error, Params = Input>(
-  callers: ((input: Input, events?: Events) => unknown)[],
-  config: {
-    target: ChainFn<Params, Result>;
-    match?: (a: Params, b: Params) => boolean;
-    map?: ChainFn<Input, Params | [Params, boolean]>;
-    filter?: ChainFn<Result, boolean>;
-  },
-) => {
-  const emitter = createEmitter<Params>();
-  const matcher = createMatcher(config.target, config.match);
-
-  const exec = async (
-    payload: [Params, boolean],
-    events?: Events,
-    ignore?: boolean,
-  ) => {
-    !payload[1] && emitter.emit("watch")(payload[0]);
-    const [promise, params, matched] = matcher(payload);
-
-    try {
-      const result = await promise;
-      const blocked =
-        config.filter &&
-        !(await (config.filter as ChainFn<Result, boolean>)(result));
-      if (blocked) return;
-      !matched && !ignore && emitter.emit("done")(result, params);
-      events?.done(result, params);
-    } catch (err) {
-      !matched && !ignore && emitter.emit("fail")(err as Err, params);
-      events?.fail(err as Err, params);
-    } finally {
-      !matched && !ignore && emitter.emit("finally")(params);
-      events?.finish(params);
-    }
-  };
-
-  const call = async (input: Input, events?: Events) => {
-    if (!config.map) return exec([input as unknown as Params, false], events);
-
-    try {
-      const params = await config.map(input);
-      exec(Array.isArray(params) ? params : [params, false], events);
-    } catch {
-      return;
-    }
-  };
-
-  callers.push(call);
-
-  const action = (input: Input) => {
-    const stored: { params?: Params; result?: Result; error?: Err } = {};
-    const { events, methods } = asyncActionResolver(stored);
-
-    callers.forEach((caller) => {
-      call === caller ? call(input, events as Events) : caller(input);
-    });
-
-    return methods;
-  };
-
-  return Object.assign(action, {
-    ...emitter.init("watch"),
-    done: emitter.init("done"),
-    fail: emitter.init("fail"),
-    finish: emitter.init("finish"),
-    filter: (fn: ChainFn<Result, boolean>) => {
-      return initAsyncAction(callers, {
+      return initAction<Input, Output>(callers, {
         ...config,
-        filter: !config.filter
-          ? fn
-          : async (input: Result) =>
-              (await (config.filter as ChainFn<Result, boolean>)(input)) &&
-              fn(input),
-      }) as AsyncAction<Input, Result, Params, Err>;
-    },
-    map: <Mapped>(
-      fn: ChainFn<Result, Mapped>,
-      match?: (params: Result, pending: Result) => boolean,
-    ) => {
-      const matcher = createMatcher(config.target, config.match);
-
-      return initAsyncAction(callers, {
-        target: fn,
-        match,
-        map: async (input: Input) => {
-          const params = config.map
-            ? await config.map(input)
-            : (input as unknown as Params);
-
-          const [promise, , matched] = await matcher(params);
-          const result = await promise;
-
-          const blocked = config.filter && !(await config.filter(result));
-          if (blocked) throw new Error();
-          return matched ? [result, true] : result;
+        filter: (output: Output) => {
+          const filtered = config.filter?.(output) ?? true;
+          if (!filtered) return false;
+          if (!(filtered instanceof Promise)) return fn(output);
+          return filtered.then((res) => (res ? fn(output) : false));
         },
-      }) as AsyncAction<Input, Mapped, Result, Err>;
+      });
     },
-  }) as AsyncAction<Input, Result, Params, Err>;
+  }) as Action<Input, Output>;
 };
+
+// type Events = {
+//   done: <R, P>(result: R, params: P) => void;
+//   fail: <E, P>(error: E, params: P) => void;
+//   finish: <P>(params: P) => void;
+// };
+//
+// const initAsyncAction = <Input, Result, Err = Error, Params = Input>(
+//   callers: ((input: Input, events?: Events) => unknown)[],
+//   config: {
+//     target: ChainFn<Params, Result>;
+//     match?: (a: Params, b: Params) => boolean;
+//     map?: ChainFn<Input, Params | [Params, boolean]>;
+//     filter?: ChainFn<Result, boolean>;
+//   },
+// ) => {
+//   const emitter = createEmitter<Params>();
+//   const matcher = createMatcher(config.target, config.match);
+//
+//   const exec = async (
+//     payload: [Params, boolean],
+//     events?: Events,
+//     ignore?: boolean,
+//   ) => {
+//     !payload[1] && emitter.emit("watch")(payload[0]);
+//     const [promise, params, matched] = matcher(payload);
+//
+//     try {
+//       const result = await promise;
+//       const blocked =
+//         config.filter &&
+//         !(await (config.filter as ChainFn<Result, boolean>)(result));
+//       if (blocked) return;
+//       !matched && !ignore && emitter.emit("done")(result, params);
+//       events?.done(result, params);
+//     } catch (err) {
+//       !matched && !ignore && emitter.emit("fail")(err as Err, params);
+//       events?.fail(err as Err, params);
+//     } finally {
+//       !matched && !ignore && emitter.emit("finally")(params);
+//       events?.finish(params);
+//     }
+//   };
+//
+//   const call = async (input: Input, events?: Events) => {
+//     if (!config.map) return exec([input as unknown as Params, false], events);
+//
+//     try {
+//       const params = await config.map(input);
+//       exec(Array.isArray(params) ? params : [params, false], events);
+//     } catch {
+//       return;
+//     }
+//   };
+//
+//   callers.push(call);
+//
+//   const action = (input: Input) => {
+//     const stored: { params?: Params; result?: Result; error?: Err } = {};
+//     const { events, methods } = asyncActionResolver(stored);
+//
+//     callers.forEach((caller) => {
+//       call === caller ? call(input, events as Events) : caller(input);
+//     });
+//
+//     return methods;
+//   };
+//
+//   return Object.assign(action, {
+//     ...emitter.init("watch"),
+//     done: emitter.init("done"),
+//     fail: emitter.init("fail"),
+//     finish: emitter.init("finish"),
+//     filter: (fn: ChainFn<Result, boolean>) => {
+//       return initAsyncAction(callers, {
+//         ...config,
+//         filter: !config.filter
+//           ? fn
+//           : async (input: Result) =>
+//               (await (config.filter as ChainFn<Result, boolean>)(input)) &&
+//               fn(input),
+//       }) as AsyncAction<Input, Result, Params, Err>;
+//     },
+//     map: <Mapped>(
+//       fn: ChainFn<Result, Mapped>,
+//       match?: (params: Result, pending: Result) => boolean,
+//     ) => {
+//       const matcher = createMatcher(config.target, config.match);
+//
+//       return initAsyncAction(callers, {
+//         target: fn,
+//         match,
+//         map: async (input: Input) => {
+//           const params = config.map
+//             ? await config.map(input)
+//             : (input as unknown as Params);
+//
+//           const [promise, , matched] = await matcher(params);
+//           const result = await promise;
+//
+//           const blocked = config.filter && !(await config.filter(result));
+//           if (blocked) throw new Error();
+//           return matched ? [result, true] : result;
+//         },
+//       }) as AsyncAction<Input, Mapped, Result, Err>;
+//     },
+//   }) as AsyncAction<Input, Result, Params, Err>;
+// };
 
 export const createAction = <Input>() => {
   return initAction<Input>([]);
@@ -341,36 +353,5 @@ const createEmitter = <T>() => {
           watcher(...(args as unknown as Args<T>)),
         );
       },
-  };
-};
-
-const createMatcher = <Params, Result>(
-  target: ChainFn<Params, Result>,
-  fn?: (a: Params, b: Params) => boolean,
-) => {
-  let pending: [Params, Promise<Result>][] = [];
-
-  return (payload: Params | [Params, boolean]) => {
-    const [params, prevMatched] = Array.isArray(payload)
-      ? payload
-      : [payload, false];
-    const matched = fn && pending.find(([prev]) => fn(params, prev));
-
-    const promise = matched?.[1] ?? target(params);
-    if (!matched && promise instanceof Promise) {
-      pending.push([params, promise]);
-      promise
-        .finally(() => {
-          const index = pending.findIndex((p) => p[1] === promise);
-          pending.splice(index, 1);
-        })
-        .catch(() => void 0);
-    }
-
-    return [
-      promise,
-      matched?.[0] ?? params,
-      Boolean(matched || prevMatched),
-    ] as [Promise<Result>, Params, boolean];
   };
 };
