@@ -1,11 +1,28 @@
-# chain-store
+![chain-store](./docs/chain-store.svg?sanitize=true#gh-light-mode-only)![chain-store](./docs/chain-store-dark.svg?sanitize=true#gh-dark-mode-only)
 
 **Simple event-based state-manager.** Works with just two functions!
+
+### Overview
+
+```ts
+import { createAction } from "chain-store";
+
+type User = { name: string, age: number };
+
+
+const chainAction = createAction<number>()
+  .filter((page:number) => page >= 1)
+  .map((page: number) => fetch(`/get-page?page=${page}`))
+  .map((res))
+```
+
 
 ```ts
 // any package manager
 npm install chain-store
 ```
+
+
 
 ### createAction()
 ```ts

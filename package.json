@@ -1,10 +1,12 @@
 {
   "name": "chain-store",
-  "version": "0.0.1",
+  "description": "Simple event-based state manager",
+  "version": "0.0.2",
   "author": {
     "name": "Aleksandr Gurianov",
     "url": "http://golova.pro"
   },
+  "homepage": "https://graverok.github.io/chain-store",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/graverok/chain-store.git"

@@ -29,7 +29,7 @@ type ActionPromise<
   Methods = {
     done: (result: Result, params: Params) => void;
     fail: (error: Error, params: Params) => void;
-    finally: (params: Params) => void;
+    finish: (params: Params) => void;
   },
   Remaining extends keyof Methods = keyof Methods,
 > = {
@@ -44,7 +44,7 @@ export type AsyncActionCall<Input, Params, Result, Err = Error> = (
 
 export interface AsyncAction<Input, Result, Params = Input, Err = Error>
   extends AsyncActionCall<Input, Params, Result, Err>,
-    Unit<Input> {
+    Unit<Params> {
   map: <Mapped>(
     target: ChainFn<Result, Mapped>,
     match?: (params: Result, prev: Result) => boolean,

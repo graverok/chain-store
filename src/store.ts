@@ -42,7 +42,7 @@ const initAction = <Input>(
       match?: (params: Input, pending: Input) => boolean,
     ) => {
       if (!config?.filter)
-        return initAsyncAction(callers, { target: fn }) as AsyncAction<
+        return initAsyncAction(callers, { target: fn, match }) as AsyncAction<
           Input,
           Mapped,
           Input,
@@ -79,7 +79,7 @@ const initAction = <Input>(
 type Events = {
   done: <R, P>(result: R, params: P) => void;
   fail: <E, P>(error: E, params: P) => void;
-  finally: <P>(params: P) => void;
+  finish: <P>(params: P) => void;
 };
 
 const initAsyncAction = <Input, Result, Err = Error, Params = Input>(
@@ -87,20 +87,20 @@ const initAsyncAction = <Input, Result, Err = Error, Params = Input>(
   config: {
     target: ChainFn<Params, Result>;
     match?: (a: Params, b: Params) => boolean;
-    map?: ChainFn<Input, Params>;
+    map?: ChainFn<Input, Params | [Params, boolean]>;
     filter?: ChainFn<Result, boolean>;
   },
 ) => {
-  const emitter = createEmitter<Input>();
-  let pending: [Params, Promise<Result>][] = [];
+  const emitter = createEmitter<Params>();
+  const matcher = createMatcher(config.target, config.match);
 
-  const exec = async (params: Params, events?: Events) => {
-    emitter.emit("watch")(params);
-    const matched =
-      config.match &&
-      pending.find(([prev]) => config.match?.(params, prev))?.[1];
-    const promise = matched ?? config.target(params);
-    !matched && promise instanceof Promise && pending.push([params, promise]);
+  const exec = async (
+    payload: [Params, boolean],
+    events?: Events,
+    ignore?: boolean,
+  ) => {
+    !payload[1] && emitter.emit("watch")(payload[0]);
+    const [promise, params, matched] = matcher(payload);
 
     try {
       const result = await promise;
@@ -108,25 +108,23 @@ const initAsyncAction = <Input, Result, Err = Error, Params = Input>(
         config.filter &&
         !(await (config.filter as ChainFn<Result, boolean>)(result));
       if (blocked) return;
-      emitter.emit("done")(result, params);
+      !matched && !ignore && emitter.emit("done")(result, params);
       events?.done(result, params);
     } catch (err) {
-      emitter.emit("fail")(err as Err, params);
+      !matched && !ignore && emitter.emit("fail")(err as Err, params);
       events?.fail(err as Err, params);
     } finally {
-      const index = pending.findIndex((p) => p[1] === promise);
-      if (index >= 0) pending.splice(index, 1);
-      emitter.emit("finally")(params);
-      events?.finally(params);
+      !matched && !ignore && emitter.emit("finally")(params);
+      events?.finish(params);
     }
   };
 
   const call = async (input: Input, events?: Events) => {
-    if (!config.map) return exec(input as unknown as Params);
+    if (!config.map) return exec([input as unknown as Params, false], events);
 
     try {
       const params = await config.map(input);
-      exec(params, events);
+      exec(Array.isArray(params) ? params : [params, false], events);
     } catch {
       return;
     }
@@ -164,6 +162,8 @@ const initAsyncAction = <Input, Result, Err = Error, Params = Input>(
       fn: ChainFn<Result, Mapped>,
       match?: (params: Result, pending: Result) => boolean,
     ) => {
+      const matcher = createMatcher(config.target, config.match);
+
       return initAsyncAction(callers, {
         target: fn,
         match,
@@ -171,10 +171,13 @@ const initAsyncAction = <Input, Result, Err = Error, Params = Input>(
           const params = config.map
             ? await config.map(input)
             : (input as unknown as Params);
-          const result = await config.target(params);
+
+          const [promise, , matched] = await matcher(params);
+          const result = await promise;
+
           const blocked = config.filter && !(await config.filter(result));
           if (blocked) throw new Error();
-          return result;
+          return matched ? [result, true] : result;
         },
       }) as AsyncAction<Input, Mapped, Result, Err>;
     },
@@ -258,7 +261,7 @@ const asyncActionResolver = <Params, Result, Error>(stored: {
   const methods: {
     done?: (result: Result, params: Params) => void;
     fail?: (error: Error, params: Params) => void;
-    finally?: (params: Params) => void;
+    finish?: (params: Params) => void;
   } = {};
 
   const events = {
@@ -272,9 +275,9 @@ const asyncActionResolver = <Params, Result, Error>(stored: {
       stored.params = params;
       methods.fail?.(error, params);
     },
-    finally: (params: Params) => {
+    finish: (params: Params) => {
       stored.params = params;
-      methods.finally?.(params);
+      methods.finish?.(params);
     },
   };
 
@@ -296,9 +299,9 @@ const asyncActionResolver = <Params, Result, Error>(stored: {
             return asyncActionResolver(stored).methods;
           }
         : void 0,
-      finally: !methods.finally
+      finish: !methods.finish
         ? (fn: (params: Params) => void) => {
-            methods.finally = fn;
+            methods.finish = fn;
             if (stored.params) fn(stored.params);
             return asyncActionResolver(stored).methods;
           }
@@ -338,5 +341,36 @@ const createEmitter = <T>() => {
           watcher(...(args as unknown as Args<T>)),
         );
       },
+  };
+};
+
+const createMatcher = <Params, Result>(
+  target: ChainFn<Params, Result>,
+  fn?: (a: Params, b: Params) => boolean,
+) => {
+  let pending: [Params, Promise<Result>][] = [];
+
+  return (payload: Params | [Params, boolean]) => {
+    const [params, prevMatched] = Array.isArray(payload)
+      ? payload
+      : [payload, false];
+    const matched = fn && pending.find(([prev]) => fn(params, prev));
+
+    const promise = matched?.[1] ?? target(params);
+    if (!matched && promise instanceof Promise) {
+      pending.push([params, promise]);
+      promise
+        .finally(() => {
+          const index = pending.findIndex((p) => p[1] === promise);
+          pending.splice(index, 1);
+        })
+        .catch(() => void 0);
+    }
+
+    return [
+      promise,
+      matched?.[0] ?? params,
+      Boolean(matched || prevMatched),
+    ] as [Promise<Result>, Params, boolean];
   };
 };
