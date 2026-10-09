@@ -2,13 +2,13 @@ type ActionCall<Params, Result extends unknown = void> = (
   params: Params,
 ) => Result;
 
-type ActionPromise<
+export type ActionPromise<
   Params,
   Result,
   Error,
   Methods = ActionPromiseMethods<Params, Result, Error>,
   Remaining extends keyof Methods = keyof Methods,
-> = {
+> = { state: "pending" | "done" | "fail" } & {
   [K in Remaining]: (
     fn: Methods[K],
   ) => ActionPromise<Params, Result, Error, Methods, Exclude<Remaining, K>>;

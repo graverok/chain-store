@@ -184,8 +184,7 @@ const initAsyncAction = <Input, Result, Params = Input, Err = Error>(
   callers.push(call);
 
   const action = (input: Input) => {
-    const stored: { params?: Params; result?: Result; error?: Err } = {};
-    const { events, methods } = resolver(stored);
+    const { events, methods } = resolver();
 
     callers.forEach((caller) => {
       call === caller ? call(input, events) : caller(input);
@@ -229,10 +228,11 @@ const mapper =
       : filterer(fn, config?.filter, fail)(params);
   };
 
-const resolver = <Params, Result, Error>(stored: {
-  params?: Params;
-  result?: Result;
-  error?: Error;
+const resolver = <Params, Result, Error>(initialConfig?: {
+  stored: { params?: Params; result?: Result; error?: Error };
+  state: "pending" | "done" | "fail";
+  controller: ActionPromiseState;
+  set: (state: "pending" | "done" | "fail") => void;
 }) => {
   const methods: {
     done?: (result: Result, params: Params) => void;
@@ -240,37 +240,68 @@ const resolver = <Params, Result, Error>(stored: {
     finish?: (params: Params) => void;
   } = {};
 
+  const config: {
+    stored: { params?: Params; result?: Result; error?: Error };
+    state: "pending" | "done" | "fail";
+    controller: ActionPromiseState;
+    set: (state: "pending" | "done" | "fail") => void;
+  } = initialConfig ?? {
+    state: "pending",
+    stored: {},
+    set: (s: "done" | "fail" | "pending") => {
+      config.state = s;
+    },
+    controller: new ActionPromiseState(() => config.state),
+  };
+
   const events = {
-    done: (result: Result, params: Params) =>
-      (stored.result = result) && methods.done?.(result, params),
-    fail: (error: Error, params: Params) =>
-      (stored.error = error) && methods.fail?.(error, params),
-    finish: (params: Params) =>
-      (stored.params = params) && methods.finish?.(params),
+    done: (result: Result, params: Params) => {
+      config.stored.result = result;
+      config.set("done");
+      methods.done?.(result, params);
+    },
+    fail: (error: Error, params: Params) => {
+      config.stored.error = error;
+      config.set("fail");
+      methods.fail?.(error, params);
+    },
+    finish: (params: Params) => {
+      config.stored.params = params;
+      methods.finish?.(params);
+    },
   };
 
   const init = <K extends keyof typeof methods>(
     key: K,
-    ...argsKey: (keyof typeof stored)[]
+    ...argsKey: (keyof typeof config.stored)[]
   ) =>
     methods[key]
       ? void 0
       : <U extends unknown[]>(fn: (...args: U) => void) => {
           //@ts-expect-error
           methods[key] = fn;
-          fn(...(argsKey.map((k) => stored[k]) as U));
-          return resolver(stored).methods;
+          config.state !== "pending" &&
+            fn(...(argsKey.map((k) => config.stored[k]) as U));
+          return resolver(config).methods;
         };
 
   return {
     events,
-    methods: {
+    methods: Object.assign(config.controller, {
       done: init("done", "result", "params"),
       fail: init("fail", "error", "params"),
       finish: init("finish", "params"),
-    },
+    }),
   };
 };
+
+class ActionPromiseState {
+  constructor(private getState: () => "pending" | "done" | "fail") {}
+
+  get state() {
+    return this.getState();
+  }
+}
 
 const createEmitter = <T>() => {
   const subscribers: Record<string, ((...args: Args<T>) => void)[]> = {};
