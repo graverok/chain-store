@@ -14,14 +14,17 @@ export const createAction = <Input>() => initAction<Input>([]);
 
 export const createStore = <State>(initialState: State) => {
   const disposers: [Unit<unknown>, Subscription][] = [];
-  const mappers: [(state: State) => unknown, (payload: unknown) => void][] = [];
+  const watchers: [(state: State) => unknown, (payload: unknown) => void][] =
+    [];
   const emitter = createEmitter<State>();
+  let postponed: VoidFunction[] = [];
+  let blocked = false;
 
   let state = initialState;
 
   const off = <U>(action: Unit<U>) => {
     const index = disposers.findIndex(([_action]) => _action === action);
-    if (index > -1) {
+    if (index >= 0) {
       disposers[index]?.[1]?.dispose();
       disposers.splice(index, 1);
     }
@@ -37,16 +40,20 @@ export const createStore = <State>(initialState: State) => {
       disposers.push([
         action,
         action.watch((...args) => {
-          const parts = mappers.map(([mapper]) => mapper(state));
+          blocked = true;
+          const parts = watchers.map(([mapper]) => mapper(state));
           const nextState = updater(state, ...args);
           if (nextState !== state) {
             state = nextState;
             emitter.emit("watch")(state);
           }
-          mappers.forEach(([mapper, watcher], index) => {
+          watchers.forEach(([mapper, watcher], index) => {
             const mapped = mapper(state);
-            mapped !== parts[index] && watcher(mapped);
+            mapped !== parts?.[index] && watcher(mapped);
           });
+          blocked = false;
+          postponed.forEach((p) => p());
+          postponed = [];
         }),
       ]);
 
@@ -56,18 +63,26 @@ export const createStore = <State>(initialState: State) => {
       off(action);
       return store;
     },
-    map: <PartState>(mapper: (state: State) => PartState) => ({
-      getState: () => mapper(state),
-      watch: (watcher: (payload: PartState) => void) => {
-        mappers.push([mapper, watcher as (payload: unknown) => void]);
-        return {
-          dispose: () => {
-            const index = mappers.findIndex((data) => data[0] === mapper);
-            mappers.splice(index, 1);
-          },
-        };
-      },
-    }),
+    map: <PartState>(mapper: (state: State) => PartState) => {
+      return {
+        getState: () => mapper(state),
+        watch: (watcher: (payload: PartState) => void) => {
+          watchers.push([mapper, watcher as (payload: unknown) => void]);
+          return {
+            dispose: () => {
+              const handler = () => {
+                const index = watchers.findIndex(
+                  (w) => w[0] === mapper && w[1] === watcher,
+                );
+                index >= 0 && watchers.splice(index, 1);
+              };
+              if (blocked) return postponed.push(handler);
+              handler();
+            },
+          };
+        },
+      };
+    },
     getState: () => state,
     watch: (watcher: (payload: State) => void) => {
       emitter.init("watch").watch(watcher as (...args: Args<State>) => void);

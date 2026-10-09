@@ -71,7 +71,5 @@ export interface Store<State> extends ReadStore<State> {
     f: (state: State, ...args: Args<T>) => State,
   ) => Store<State>;
   off: <T>(action: Unit<T>) => Store<State>;
-  map: <Part>(
-    mapper: (state: State) => Part,
-  ) => Pick<Store<Part>, "watch" | "getState">;
+  map: <Part>(mapper: (state: State) => Part) => ReadStore<Part>;
 }
