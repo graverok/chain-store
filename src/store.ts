@@ -7,6 +7,7 @@ import {
   Subscription,
   Unit,
   ActionPromiseMethods,
+  AsyncActionOptions,
 } from "./types";
 
 export const createAction = <Input>() => initAction<Input>([]);
@@ -119,11 +120,15 @@ const initAction = <Input, Output = Input>(
         filter: config?.filter ? filterer(fn, config.filter) : fn,
       });
     },
-    target: <Result, Err>(fn: ChainFn<Output, Result>) => {
+    target: <Result, Err>(
+      fn: ChainFn<Output, Result>,
+      options?: AsyncActionOptions,
+    ) => {
       if (!config?.filter)
         return initAsyncAction<Input, Result, Output, Err>(callers, {
           map: config?.map,
           target: fn,
+          options,
         });
 
       return initAsyncAction<Input, Result, Output, Err>(callers, {
@@ -136,6 +141,7 @@ const initAction = <Input, Output = Input>(
           return params as Output;
         },
         target: fn,
+        options,
       });
     },
   }) as Action<Input, Output>;
@@ -146,25 +152,44 @@ const initAsyncAction = <Input, Result, Params = Input, Err = Error>(
   config: {
     target: ChainFn<Params, Result>;
     map?: ChainFn<Input, Params>;
+    options?: AsyncActionOptions;
   },
 ) => {
   const emitter = createEmitter<Params>();
+  const pending: Promise<Result>[] = [];
 
   const exec = async (
     params: Params,
     events?: ActionPromiseMethods<Params, Result, Err>,
   ) => {
-    emitter.emit("watch")(params);
+    const promise = config.target(params);
+
+    if (!(promise instanceof Promise)) {
+      emitter.emit("watch")(params);
+      emitter.emit("done")(promise, params);
+      events?.done(promise, params);
+      return;
+    }
+
+    const matched = pending.includes(promise);
+    const skipDuplicates = config.options?.skipDuplicates !== false;
+    !matched && skipDuplicates && pending.push(promise);
+    (!matched || !skipDuplicates) && emitter.emit("watch")(params);
 
     try {
-      const result = await config.target(params);
-      emitter.emit("done")(result, params);
+      const result = await promise;
+      (!matched || !skipDuplicates) && emitter.emit("done")(result, params);
       events?.done(result, params);
     } catch (err) {
-      emitter.emit("fail")(err as Err, params);
+      (!matched || !skipDuplicates) && emitter.emit("fail")(err as Err, params);
       events?.fail(err as Err, params);
     } finally {
-      emitter.emit("finally")(params);
+      if (!matched || !skipDuplicates) {
+        emitter.emit("finally")(params);
+      } else {
+        const index = pending.findIndex((p) => p === promise);
+        index >= 0 && pending.splice(index, 1);
+      }
       events?.finish(params);
     }
   };

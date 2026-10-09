@@ -22,6 +22,10 @@ export type ActionPromiseMethods<Params, Result, Error> = {
 
 export type Args<Params> = Params extends Array<unknown> ? Params : [Params];
 
+export type AsyncActionOptions = {
+  skipDuplicates?: boolean;
+};
+
 export type ChainFn<Input, Output> = (
   params: Input,
 ) => Output | Promise<Output>;
@@ -39,7 +43,7 @@ export interface Action<Input, Output = Input>
     Unit<Input> {
   filter: (fn: ChainFn<Output, boolean>) => Action<Input, Output>;
   map: <Mapped>(fn: ChainFn<Output, Mapped>) => Action<Input, Mapped>;
-  target: <Result, Err>(
+  target: <Result, Err = Error>(
     fn: ChainFn<Output, Result>,
   ) => AsyncAction<Input, Result, Output, Err>;
 }
