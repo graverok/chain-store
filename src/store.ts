@@ -191,22 +191,25 @@ const initAsyncAction = <Input, Result, Params = Input, Err = Error>(
     !matched && skipDuplicates && pending.push(promise);
     (!matched || !skipDuplicates) && emitter.emit("watch")(params);
 
-    try {
-      const result = await promise;
-      (!matched || !skipDuplicates) && emitter.emit("done")(result, params);
-      events?.done(result, params);
-    } catch (err) {
-      (!matched || !skipDuplicates) && emitter.emit("fail")(err as Err, params);
-      events?.fail(err as Err, params);
-    } finally {
-      if (!matched || !skipDuplicates) {
-        emitter.emit("finally")(params);
-      } else {
-        const index = pending.findIndex((p) => p === promise);
-        index >= 0 && pending.splice(index, 1);
+    window.requestAnimationFrame(async () => {
+      try {
+        const result = await promise;
+        (!matched || !skipDuplicates) && emitter.emit("done")(result, params);
+        events?.done(result, params);
+      } catch (err) {
+        (!matched || !skipDuplicates) &&
+          emitter.emit("fail")(err as Err, params);
+        events?.fail(err as Err, params);
+      } finally {
+        if (!matched || !skipDuplicates) {
+          emitter.emit("finally")(params);
+        } else {
+          const index = pending.findIndex((p) => p === promise);
+          index >= 0 && pending.splice(index, 1);
+        }
+        events?.finish(params);
       }
-      events?.finish(params);
-    }
+    });
   };
 
   const call = async (
