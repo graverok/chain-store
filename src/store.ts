@@ -82,37 +82,52 @@ export const createStore = <State>(initialState: State) => {
   return store as Store<State>;
 };
 
+type CallFn<P = any> = (
+  params: P,
+  queue: VoidFunction[],
+  events?: ActionPromiseEvents,
+) => void;
+
 const initAction = <Input, Output = Input>(
-  start?: (input: Input, events?: ActionPromiseEvents) => void,
-  init?: (fn: (params: any) => void) => void,
+  start?: CallFn<Input>,
+  propagate?: (fn: CallFn) => void,
   map?: (params: any) => Output | Promise<Output>,
   filter?: (params: Output) => boolean | Promise<boolean>,
 ) => {
   let watch: Emitter = {};
-  const next: ((output: Output, events?: ActionPromiseEvents) => void)[] = [];
+  const next: CallFn<Output>[] = [];
 
-  const exec = (params: Output, events?: ActionPromiseEvents) => {
+  const exec = (
+    params: Output,
+    queue: VoidFunction[],
+    events?: ActionPromiseEvents,
+  ) => {
     watch.emit?.(params);
-    next.forEach((call) => call(params, events));
+    next.forEach((call) => queue.push(() => call(params, queue, events)));
+    next.forEach(() => queue.splice(0, 1)[0]());
   };
 
-  const call = (input: Input | Output, events?: ActionPromiseEvents) => {
+  const call = (
+    input: Input | Output,
+    queue: VoidFunction[],
+    events?: ActionPromiseEvents,
+  ) => {
     try {
-      if (map) return awaiter(input, map, (res) => exec(res, events));
+      if (map) return awaiter(input, map, (res) => exec(res, queue, events));
       if (filter)
         return awaiter(
           input as Output,
           filter,
-          (res) => res && exec(input as Output, events),
+          (res) => res && exec(input as Output, queue, events),
         );
-      exec(input as Output, events);
+      exec(input as Output, queue, events);
     } catch {}
   };
 
-  init?.(call);
+  propagate?.(call);
 
   const action = (input: Input) => {
-    (start ?? call)(input);
+    (start ?? call)(input, []);
     return;
   };
 
@@ -141,9 +156,10 @@ const initAction = <Input, Output = Input>(
 const initAsyncAction = <Input, Result, Params = Input, Err = Error>(
   start: (
     input: Input,
+    queue: VoidFunction[],
     events?: ActionPromiseEvents<Params, Result, Err>,
   ) => void,
-  init: (fn: (params: Params) => void) => void,
+  propagate: (fn: CallFn<Params>) => void,
   target: ChainFn<Params, Result>,
   options?: AsyncActionOptions,
 ) => {
@@ -161,9 +177,10 @@ const initAsyncAction = <Input, Result, Params = Input, Err = Error>(
 
     if (!(promise instanceof Promise)) {
       watch.emit?.(params);
-      done.emit?.(promise, params);
-      events?.done(promise, params);
-      return;
+      return waiter().then(() => {
+        done.emit?.(promise, params);
+        events?.done(promise, params);
+      });
     }
 
     const matched = pending.includes(promise);
@@ -181,15 +198,14 @@ const initAsyncAction = <Input, Result, Params = Input, Err = Error>(
     } finally {
       !matched || !skipDuplicates
         ? finish.emit?.(params)
-        : window.requestAnimationFrame(() => {
-            splicer(pending, promise);
-          });
+        : waiter().then(() => splicer(pending, promise));
       events?.finish(params);
     }
   };
 
   const call = async (
     params: Params,
+    _: VoidFunction[],
     events?: ActionPromiseEvents<Params, Result, Err>,
   ) => {
     try {
@@ -197,11 +213,11 @@ const initAsyncAction = <Input, Result, Params = Input, Err = Error>(
     } catch {}
   };
 
-  init(call);
+  propagate(call);
 
   const action = (input: Input) => {
     const { events, methods } = promiser();
-    start(input, events);
+    start(input, [], events);
 
     return methods;
   };
@@ -300,11 +316,6 @@ class ActionPromiseState {
   }
 }
 
-interface Emitter {
-  watch?: (watcher: (...args: Args<any>) => void) => Subscription;
-  emit?: (...args: Args<any>) => void;
-}
-
 const pusher =
   <U>(arr: U[]) =>
   (a: U) =>
@@ -315,6 +326,12 @@ const splicer = <U = unknown>(arr: U[], a?: U, compare?: (b: U) => boolean) => {
   return index >= 0 ? arr.splice(index, 1)[0] : void 0;
 };
 
+const waiter = () => (async () => void 0)();
+
+interface Emitter {
+  watch?: (watcher: (...args: Args<any>) => void) => Subscription;
+  emit?: (...args: Args<any>) => void;
+}
 const subscribe =
   (emitter: Emitter) =>
   (callback: (...args: Args<any>) => void): Subscription => {
