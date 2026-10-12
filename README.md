@@ -44,9 +44,9 @@ const squareRoot = setNumber.filter((n: number) => n >= 0).map(Math.sqrt)
 
 
 All actions in a chain are connected, and triggering any of them will trigger 
-the others. Each action triggers in the order in which it was chained. Subscriptions 
+the others. Each action triggers in the order of chaining. Subscriptions 
 fire after all callbacks for that action have resolved, so asynchronous callbacks 
-can make the process take longer.
+will take longer to process.
 
 ```ts
 /* Subscribe to see the output */

@@ -6,7 +6,7 @@ export type ActionPromise<
   Params,
   Result,
   Error,
-  Methods = ActionPromiseMethods<Params, Result, Error>,
+  Methods = ActionPromiseEvents<Params, Result, Error>,
   Remaining extends keyof Methods = keyof Methods,
 > = { state: "pending" | "done" | "fail" } & {
   [K in Remaining]: (
@@ -14,7 +14,7 @@ export type ActionPromise<
   ) => ActionPromise<Params, Result, Error, Methods, Exclude<Remaining, K>>;
 };
 
-export type ActionPromiseMethods<Params, Result, Error> = {
+export type ActionPromiseEvents<Params = any, Result = any, Error = any> = {
   done: (result: Result, params: Params) => void;
   fail: (error: Error, params: Params) => void;
   finish: (params: Params) => void;
@@ -40,7 +40,7 @@ export interface Unit<Params> {
 
 export interface Action<Input, Output = Input>
   extends ActionCall<Input>,
-    Unit<Input> {
+    Unit<Output> {
   filter: (fn: ChainFn<Output, boolean>) => Action<Input, Output>;
   map: <Mapped>(fn: ChainFn<Output, Mapped>) => Action<Input, Mapped>;
   target: <Result, Err = Error>(

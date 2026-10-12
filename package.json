@@ -1,7 +1,7 @@
 {
   "name": "chain-store",
   "description": "Simple event-based state manager",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "author": {
     "name": "Aleksandr Gurianov",
     "url": "http://golova.pro"
