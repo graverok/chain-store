@@ -38,7 +38,7 @@ export interface Unit<Params> {
   watch: (watcher: (...args: Args<Params>) => void) => Subscription;
 }
 
-export interface Action<Input, Output = Input>
+export interface Action<Input = void, Output = Input>
   extends ActionCall<Input>,
     Unit<Output> {
   filter: (fn: ChainFn<Output, boolean>) => Action<Input, Output>;

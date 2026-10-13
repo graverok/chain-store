@@ -11,7 +11,7 @@ import {
   ActionPromise,
 } from "./types";
 
-export const createAction = <Input>() => initAction<Input>();
+export const createAction = <Input = void>() => initAction<Input>();
 
 export const createStore = <State>(initialState: State) => {
   const disposers: [Unit<unknown>, Subscription][] = [];
@@ -88,7 +88,7 @@ type CallFn<P = any> = (
   match?: (call: CallFn) => ActionPromiseEvents | void,
 ) => void;
 
-const initAction = <Input, Output = Input>(
+const initAction = <Input = void, Output = Input>(
   start?: CallFn<Input>,
   propagate?: (fn: CallFn) => void,
   map?: (params: any) => Output | Promise<Output>,
