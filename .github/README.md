@@ -2,9 +2,8 @@
 
 **A simple event-based state manager!**
 
-```
+```ts
 /** Any package manager */
-
 > npm install chain-store
 ```
 
@@ -44,9 +43,7 @@ const squareRoot = setNumber.filter((n: number) => n >= 0).map(Math.sqrt)
 
 
 All actions in a chain are connected, and triggering any of them will trigger
-the others. Each action triggers in the order of chaining. Subscriptions
-fire after all callbacks for that action have resolved, so asynchronous callbacks
-will take longer to process.
+the others. Each action triggers in the order of chaining.
 
 ```ts
 /* Subscribe to see the output */
@@ -59,14 +56,16 @@ asObject(16);     // -> "asString", "16"
                   // -> "squareRoot", 4
                   // -> "asObject", { value: "16" } */
 
-/* "negativeOnly" is filtered out */
+/* "negativeOnly" is filtered out.
+   "asObject" fires last because of async mapper */
 
 
 squareRoot(-10);  // -> "asString", "-10"
                   // -> "negativeOnly", -10
                   // -> "asObject", { value: "-10" }
 
-/* "squareRoot" is filtered out, even though it was the original trigger */
+/* "squareRoot" is filtered out, 
+   even if it was the original trigger */
 ```
 
 Of course, you can choose which actions to watch. And there’s no need to create
@@ -81,48 +80,53 @@ const chainAction = createAction<number>()
 ```
 
 
-### Async Actions
-An async action is the end of a chain. The main difference between an async action
-and a regular action is that an async action has `.done`, `.fail`, and `.finally` methods,
+### Action Targets
+An action target is the end of a chain. The main difference between an action
+and a target is that the latter has `.done`, `.fail`, and `.finish` methods,
 which can be watched just like triggers.
 
 Create an async action by chaining an action with the `.target` method:
 
 ```ts
 import { createAction } from "chain-store";
-import type { AsyncAction } from "chain-store";
+import type { ActionTarget } from "chain-store";
 
-const asyncAction: AsyncAction<number, { data: number }> 
+const actionTarget: ActionTarget<number, { data: number }> 
   = createAction<number>().target(async (payload: number) => ({ data: payload }))
 
-asynsAction.watch((payload: number) => 
-  console.log("start", payload));
+actionTarget.watch((params: number) => 
+  console.log("start", params));
 
-asyncActions.done.watch((result: { data: number }, payload: number) => 
-  console.log("done", result, payload));
+actionTarget.done.watch((result: { data: number }, params: number) => 
+  console.log("done", result, params));
 
-asyncActions.fail.watch((error: Error, payload: number) => 
-  console.log("fail", error, payload));
+actionTarget.fail.watch((error: Error, params: number) => 
+  console.log("fail", error, params));
 
-asyncActions.finally.watch((payload: number) => 
-  console.log("finally", payload));
+actionTarget.finish.watch((params: number) => 
+  console.log("finish", params));
 ```
 
-Async actions return an `ActionPromise`. It’s like a promise, but it isn’t one.
+Action targets return an `ActionPromise`. It’s like a promise, but it isn’t one.
 It’s useful when you need to wait for an async action to complete before doing
 something elsewhere in the app, outside the store.
 
 ```ts
-const actionPromise = asyncAction(20);
+const actionPromise = actionTarget(20);
 
-actionPromise.done((result: { data: number }, payload: number) => {
-  console.log(result, params);        // -> { data: 20 }, 20, "done"
-  console.log(actionPromise.state);   // -> "done"
-});
+actionPromise
+  .done((result: { data: number }, params: number) => {
+    console.log(result, params);        // -> { data: 20 }, 20
+  })
+  .fail((error: Error, params: number) => {
+    console.error(error.name, params);
+  })
+  .finish((params: number) => {
+    console.log(params);                // -> 20
+    console.log(actionPromise.state);   // -> "done"
+  })
 
 console.log(actionPromise.state);     // -> "pending"
-
-
 ```
 
 **Note I:** An async action fails only if its own callback is rejected. Any other

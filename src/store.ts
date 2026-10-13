@@ -1,13 +1,13 @@
 import {
   Action,
-  AsyncAction,
+  ActionTarget,
   Args,
   ChainFn,
   Store,
   Subscription,
   Unit,
   ActionPromiseEvents,
-  AsyncActionOptions,
+  ActionTargetOptions,
   ActionPromise,
 } from "./types";
 
@@ -93,14 +93,14 @@ const initAction = <Input = void, Output = Input>(
   propagate?: (fn: CallFn) => void,
   map?: (params: any) => Output | Promise<Output>,
   filter?: (params: Output) => boolean | Promise<boolean>,
-) => {
+): Action<Input, Output> => {
   let watch: Emitter = {};
   const next: CallFn<Output>[] = [];
 
   const exec: CallFn<Output> = (params, queue, match) => {
     watch.emit?.(params);
-    for (const call of next) queue.push(() => call(params, queue, match));
-    for (let i = 0; i < next.length; i++) queue.splice(0, 1)[0]();
+    next.forEach((call) => queue.push(() => call(params, queue, match)));
+    next.forEach(() => queue.splice(0, 1)[0]());
   };
 
   const call: CallFn<Input | Output> = (input, queue, match) => {
@@ -125,32 +125,24 @@ const initAction = <Input = void, Output = Input>(
 
   return Object.assign(action, {
     watch: subscribe(watch),
-    map: <Mapped>(map: ChainFn<Output, Mapped>) =>
-      initAction(start ?? call, pusher(next), map) as Action<Input, Mapped>,
-    filter: (filter: ChainFn<Output, boolean>) =>
-      initAction(start ?? call, pusher(next), void 0, filter) as Action<
-        Input,
-        Output
-      >,
+    map: <Mapped>(map: ChainFn<Output, Mapped>): Action<Input, Mapped> =>
+      initAction(start ?? call, pusher(next), map),
+    filter: (filter: ChainFn<Output, boolean>): Action<Input, Output> =>
+      initAction(start ?? call, pusher(next), void 0, filter),
     target: <Result, Err>(
       fn: ChainFn<Output, Result>,
-      options?: AsyncActionOptions,
-    ) =>
-      initAsyncAction<Input, Result, Output, Err>(
-        start ?? call,
-        pusher(next),
-        fn,
-        options,
-      ),
-  }) as Action<Input, Output>;
+      options?: ActionTargetOptions,
+    ): ActionTarget<Input, Result, Output, Err> =>
+      initActionTarget(start ?? call, pusher(next), fn, options),
+  });
 };
 
-const initAsyncAction = <Input, Result, Params = Input, Err = Error>(
+const initActionTarget = <Input, Result, Params = Input, Err = Error>(
   start: CallFn<Input>,
   propagate: (fn: CallFn<Params>) => void,
   target: ChainFn<Params, Result>,
-  options?: AsyncActionOptions,
-) => {
+  options?: ActionTargetOptions,
+): ActionTarget<Input, Result, Params, Err> => {
   let watch: Emitter = {};
   let done: Emitter = {};
   let fail: Emitter = {};
@@ -212,7 +204,7 @@ const initAsyncAction = <Input, Result, Params = Input, Err = Error>(
     done: { watch: subscribe(done) },
     fail: { watch: subscribe(fail) },
     finish: { watch: subscribe(finish) },
-  }) as AsyncAction<Input, Result, Params, Err>;
+  }) as ActionTarget<Input, Result, Params, Err>;
 };
 
 const awaiter = <O, R>(
@@ -268,9 +260,13 @@ const promiser = <Params, Result, Error>(
       ? void 0
       : (fn: (...args: (Result | Error | Params)[]) => void) => {
           methods[key] = fn;
-          const args = [config.stored[index]];
-          index < 2 && args.push(config.stored[2]);
-          config.state !== "pending" && fn(...args);
+          config.state !== "pending" &&
+            fn(
+              ...[
+                config.stored[index],
+                ...(index < 2 ? [config.stored[2]] : []),
+              ],
+            );
           return promiser(config, methods).methods;
         },
   });
@@ -337,9 +333,8 @@ const subscribe =
       };
     };
 
-    emitter.emit = (...args: Args<any>) => {
-      for (const watcher of subscribers) watcher(...args);
-    };
+    emitter.emit = (...args: Args<any>) =>
+      subscribers.forEach((watcher) => watcher(...args));
 
     return emitter.watch(callback);
   };

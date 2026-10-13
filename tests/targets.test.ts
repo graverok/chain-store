@@ -5,7 +5,7 @@ import { delay, filter, mapper } from "./utils";
 let res: any[] = [];
 const handler = (p: string) => (r: any) => res.push(`${p}-${r}`);
 
-test("async actions", async () => {
+test("targets", async () => {
   const act1 = createAction<number>();
   const tar1 = act1.target((n) => [n]);
   const act2 = act1.map((n) => n * 2);
@@ -61,7 +61,7 @@ test("async actions", async () => {
   expect(res).toEqual(["a1-20", "a2-40", "t1-20", "t2-40", "t1d-20", "t2d-48"]);
 });
 
-test("simultaneous async action calls", async () => {
+test("simultaneous target calls", async () => {
   const pending: Record<number, Promise<number> | void> = {};
   const stored: Record<number, Promise<number> | void> = {};
 
@@ -138,7 +138,7 @@ test("simultaneous async action calls", async () => {
   ]);
 });
 
-test("async actions error", async () => {
+test("targets error", async () => {
   const error = (x: number) => (n: number) => {
     return new Promise((resolve, reject) => {
       setTimeout(() => (x === n ? reject(`error-${n}`) : resolve(n)), 200);

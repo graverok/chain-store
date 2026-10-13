@@ -22,7 +22,7 @@ export type ActionPromiseEvents<Params = any, Result = any, Error = any> = {
 
 export type Args<Params> = Params extends Array<unknown> ? Params : [Params];
 
-export type AsyncActionOptions = {
+export type ActionTargetOptions = {
   skipDuplicates?: boolean;
 };
 
@@ -45,10 +45,10 @@ export interface Action<Input = void, Output = Input>
   map: <Mapped>(fn: ChainFn<Output, Mapped>) => Action<Input, Mapped>;
   target: <Result, Err = Error>(
     fn: ChainFn<Output, Result>,
-  ) => AsyncAction<Input, Result, Output, Err>;
+  ) => ActionTarget<Input, Result, Output, Err>;
 }
 
-export interface AsyncAction<Input, Result, Params = Input, Err = Error>
+export interface ActionTarget<Input, Result, Params = Input, Err = Error>
   extends ActionCall<Input, ActionPromise<Params, Result, Err>>,
     Unit<Params> {
   done: {
@@ -71,5 +71,5 @@ export interface Store<State> extends ReadStore<State> {
     f: (state: State, ...args: Args<T>) => State,
   ) => Store<State>;
   off: <T>(action: Unit<T>) => Store<State>;
-  map: <Part>(mapper: (state: State) => Part) => ReadStore<Part>;
+  map: <Mapped>(mapper: (state: State) => Mapped) => ReadStore<Mapped>;
 }

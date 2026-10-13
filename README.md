@@ -3,26 +3,32 @@
 **A simple event-based state manager!**
 
 ```ts
-import { createAction } from "chain-store";
-import type { Action, AsyncAction } from "chain-store";
-import { DiagnosticsChannel } from "undici-types";
-import { createStore } from "./store";
-import Error = DiagnosticsChannel.Error;
+import { createAction, createStore } from "chain-store";
+import type { Action, ActionTarget, Store } from "chain-store";
 
 type ExampleData = { name: string, email: string };
 
 // Create Action:
 const getData: Action<number> = createAction<number>();
 
-// Create AsyncAction:
-const fetchData: AsyncAction<number, ExampleData> = getData.target(
-  (id: number) => fetch(`/details/?id=${ id }`).then(res => res.json() as ExampleData)
+// Create ActionTarget:
+const fetchData: ActionTarget<number, ExampleData> = getData.target(
+  (id: number) => {
+    return fetch(`/details/?id=${ id }`).then(
+      res => res.json() as ExampleData
+    )
+  }
+    
 );
 
-type State = Record<number, { loading: boolean, data: ExampleData | null, error?: string }>;
+type State = Record<number, {
+  loading: boolean,
+  data: ExampleData | null,
+  error?: string
+}>;
 
 // Create Store:
-const store = createStore < State >> ({})
+const store: Store<State> = createStore<State>({})
   // Subscribe to watch changes
   .on(fetchData, (state: State, params: number) => ({
     ...state,
@@ -37,8 +43,14 @@ const store = createStore < State >> ({})
     [params]: { data: null, loading: false, error: error.name }
   }));
 
-// Trigger 
-getData(1); /* or fetchData(1) */
+// Trigger Action
+getData(1); 
+
+// Or trigger ActionTarget if you need to execute something when it's completed. 
+fetchData(1)
+  .done((result: ExampleData, params: number) => console.log(result, params))
+  .fail((error: Error, params: number) => console.log(error.name, params))
+  .finish((params: number) => console.log(params));
 
 ```
 
