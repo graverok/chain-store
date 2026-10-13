@@ -1,7 +1,7 @@
 {
   "name": "chain-store",
-  "description": "Simple event-based state manager",
-  "version": "0.0.3",
+  "description": "Simple event-based state manager!",
+  "version": "0.0.4",
   "author": {
     "name": "Aleksandr Gurianov",
     "url": "http://golova.pro"
@@ -32,12 +32,14 @@
     "@types/node": "^22.8.6",
     "prettier": "^3.1.1",
     "typescript": "^5.3.3",
-    "vite": "5.4.6",
-    "vite-plugin-dts": "^4.0.3",
-    "vite-tsconfig-paths": "^4.3.1"
+    "vite": "^8.3.4",
+    "vite-plugin-dts": "^5.1.2",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^5.0.4"
   },
   "scripts": {
-    "build": "vite build"
+    "build": "vite build",
+    "test": "vitest"
   },
   "files": [
     "dist",
