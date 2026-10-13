@@ -7,15 +7,24 @@ const handler = (p: string) => (r: any) => res.push(`${p}-${r}`);
 
 test("targets", async () => {
   const act1 = createAction<number>();
+  const act3 = act1.map((n) => new Promise((resolve) => resolve(n - 10)));
   const tar1 = act1.target((n) => [n]);
   const act2 = act1.map((n) => n * 2);
   const tar2 = act2.target(mapper(1.2));
   const tar3 = act1.filter(filter(20)).target(mapper(3.5));
 
+  let t1w = 0;
+  let t1d = 0;
+
   act1.watch(handler("a1"));
-  tar1.watch(handler("t1"));
-  tar1.done.watch(handler("t1d"));
+  tar1.watch((n) => {
+    t1w = n;
+  });
+  tar1.done.watch((n) => {
+    t1d = n[0];
+  });
   act2.watch(handler("a2"));
+  act3.watch(handler("a3"));
   tar2.watch(handler("t2"));
   tar2.done.watch(handler("t2d"));
   tar3.watch(handler("t3"));
@@ -29,26 +38,19 @@ test("targets", async () => {
 
   expect(res).toEqual(["a1-10", "a2-20"]);
   await delay();
-  expect(res).toEqual(["a1-10", "a2-20", "t1-10", "t2-20"]); // target's watch resolve
+  expect(t1w).toBe(10);
+  expect(t1d).toBe(0);
   await delay();
-  expect(res).toEqual(["a1-10", "a2-20", "t1-10", "t2-20", "t1d-10"]); // target1 done resolves
+  expect(t1d).toBe(10);
+  expect(res).toEqual(["a1-10", "a2-20", "a3-0", "t2-20"]); // target's watch resolve
+  await delay(200);
+  expect(res).toEqual(["a1-10", "a2-20", "a3-0", "t2-20", "t3-10", "t2d-24"]);
   await delay(200);
   expect(res).toEqual([
     "a1-10",
     "a2-20",
-    "t1-10",
+    "a3-0",
     "t2-20",
-    "t1d-10",
-    "t3-10",
-    "t2d-24",
-  ]);
-  await delay(200);
-  expect(res).toEqual([
-    "a1-10",
-    "a2-20",
-    "t1-10",
-    "t2-20",
-    "t1d-10",
     "t3-10",
     "t2d-24",
     "t3d-35",
@@ -58,7 +60,7 @@ test("targets", async () => {
   res = [];
   act1(20);
   await delay(500);
-  expect(res).toEqual(["a1-20", "a2-40", "t1-20", "t2-40", "t1d-20", "t2d-48"]);
+  expect(res).toEqual(["a1-20", "a2-40", "a3-10", "t2-40", "t2d-48"]);
 });
 
 test("simultaneous target calls", async () => {
