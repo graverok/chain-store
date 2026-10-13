@@ -235,16 +235,14 @@ type PromiseConfig<Params, Result, Error> = {
 };
 
 const eventKeys = ["done", "fail", "finish"];
-
 const promiser = <Params, Result, Error>(
   initialConfig?: PromiseConfig<Params, Result, Error>,
-) => {
-  const methods: {
+  methods: {
     done?: (result: Result, params: Params) => void;
     fail?: (error: Error, params: Params) => void;
     finish?: (params: Params) => void;
-  } = {};
-
+  } = {},
+) => {
   const config: PromiseConfig<Params, Result, Error> = initialConfig ?? {
     state: "pending",
     stored: [],
@@ -255,11 +253,11 @@ const promiser = <Params, Result, Error>(
   const events = eventKeys.reduce(
     (acc, key, index) => ({
       ...acc,
-      [key]: (a: Result | Error | Params, b?: Params) => {
-        config.stored[index] = a;
+      [key]: (...args: (Result | Error | Params)[]) => {
+        config.stored[index] = args[0];
         if (index < 2) config.set(key as PromiseState);
         //@ts-expect-error
-        methods[key]?.(a, b);
+        methods[key]?.(...args);
       },
     }),
     {} as ActionPromiseEvents<Params, Result, Error>,
@@ -268,13 +266,12 @@ const promiser = <Params, Result, Error>(
   const init = <K extends keyof typeof methods>(key: K, index: number) => ({
     [key]: methods[key]
       ? void 0
-      : <U>(fn: (...args: Args<U>) => void) => {
-          //@ts-expect-error
+      : (fn: (...args: (Result | Error | Params)[]) => void) => {
           methods[key] = fn;
-          config.state !== "pending" &&
-            //@ts-expect-error
-            fn(config.stored[index], index < 2 ? config.stored[2] : void 0);
-          return promiser(config).methods;
+          const args = [config.stored[index]];
+          index < 2 && args.push(config.stored[2]);
+          config.state !== "pending" && fn(...args);
+          return promiser(config, methods).methods;
         },
   });
 
