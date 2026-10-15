@@ -1,188 +1,223 @@
+<br/>
+
 ![chain-store](../docs/chain-store-light.svg?sanitize=true#gh-light-mode-only)![chain-store](../docs/chain-store-dark.svg?sanitize=true#gh-dark-mode-only)
 
-**A simple event-based state manager!**
+**A simple event-based state manager.**<br/>
+- Events with pre-bound chains of filters and mappings
+- Asynchronous actions for business logic
+- Independent stores that can be watched in full or in part
+- Customizable synchronization between stores, events, and actions
+- Small: **2.49kb** minified, **1.14kb** gzipped
 
-```ts
-/** Any package manager */
-> npm install chain-store
+## <br/>Installation
+
+```sh
+npm install chain-store
 ```
 
+## <br/>Actions
 
-### Actions
+An **action** takes an `Input` and emits an `Output` through a chain of commands. A chain supports three types of commands:
 
-Create an action, trigger it, and subscribe or unsubscribe to updates:
+- **`.map`** transforms the value from the previous command and passes the result to the next command.
+- **`.filter`** conditionally stops execution based on the value from the previous command.
+- **`.target`** returns a `Target`: an asynchronous action designed for business logic.
+
 ```ts
-import { createAction } from "chain-store";
-import type { Action, Subscription } from "chain-store";
+import { chain, Action } from "chain-store";
 
-/* Create */
-const setNumber: Action<number> = createAction<number>()
+/** Create an action */
+const testAction: Action<number, string> = chain<number>()
+  .filter((n: number) => n > 0)
+  .map((n: number) => n.toString())
+  .filter((s: string) => s.length > 2);
 
-/* Subscribe */
-const subscription: Subscription = setNumber.watch(console.log)
+/** Watch emitted outputs */
+const unwatch = testAction.watch(console.log);
 
-/* Trigger */
-setNumber(42);    // -> 42
+/** Call the action */
+testAction(1000);                         //=> "1000"
+testAction(-1000);                        /* Filtered out: (n > 0) */
 
-/* Unsubscribe */
-subscription.dispose();
+/** Stop watching */
+unwatch();
 ```
 
-
-### Chaining
-Every action can be chained with other actions using the `.map` and `.filter` methods.
-These methods take a callback as input. The callback returns a new value for `.map`
-and a boolean for `.filter`. Callbacks can be asynchronous.
+<br/>You can split a chain into separate actions to suit your needs. Triggering any action in the chain causes the other actions to emit their respective outputs.
 
 ```ts
-const asString = setNumber.map((n: number) => n.toString());
-const asObject = asString.map(async (s: string) => ({ value: s }));
-const negativeOnly = setNumber.filter((n: number) => n < 0)
-const squareRoot = setNumber.filter((n: number) => n >= 0).map(Math.sqrt)
+import { chain, Action } from "chain-store";
+
+const setNumber: Action<number, number> = chain<number>();
+const positiveOnly: Action<number, number> = setNumber.filter(n => n > 0);
+const asString: Action<number, string> = positiveOnly.map(n => n.toString());
+
+setNumber.watch(console.log);
+asString.watch(console.log);
+
+asString(42);                             //=> 42
+                                          //=> "42"
+
+/** It doesn't matter which action in the chain you call */
+positiveOnly(-1);                         //=> -1
 ```
 
-
-All actions in a chain are connected, and triggering any of them will trigger
-the others. Each action triggers in the order of chaining.
+<br/>Commands can also be asynchronous. A `Promise` is resolved before its value is passed down the chain. Any rejection or error stops further execution.
 
 ```ts
-/* Subscribe to see the output */
-asString.watch(s => console.log("asString", s));
-asObject.watch(o => console.log("asObject", o));
-negativeOnly.watch(n => console.log("negativeOnly", n));
-squareRoot.watch(n => console.log("squareRoot", n));
-
-asObject(16);     // -> "asString", "16"
-                  // -> "squareRoot", 4
-                  // -> "asObject", { value: "16" } */
-
-/* "negativeOnly" is filtered out.
-   "asObject" fires last because of async mapper */
-
-
-squareRoot(-10);  // -> "asString", "-10"
-                  // -> "negativeOnly", -10
-                  // -> "asObject", { value: "-10" }
-
-/* "squareRoot" is filtered out, 
-   even if it was the original trigger */
+const action: Action<number, Promise<string>> = chain()
+  .map(async (n: number) => n.toString())
+  .filter((s: string) => s.length > 1);
 ```
 
-Of course, you can choose which actions to watch. And there’s no need to create
-each action separately:
+## <br/>Targets
+
+Targets are the logical endpoints of chains, designed for business logic. When called, 
+a target emits its input parameters. It also emits a success or failure event when 
+the operation is fulfilled or rejected, similar to a promise. Targets are always 
+asynchronous, even when given a regular function.
+
+Create a target by adding the `.target` command to an action chain.
 
 ```ts
-const chainAction = createAction<number>()
-  .filter(n > 0)
-  .map(n => Math.pow(n, 2))
-  .filter(n < 1000)
-  .map(n => `Power of two is: ${n}`)
+import { chain, Target } from "chain-store";
+
+type Result = { data: string };
+
+const target: Target<string, string, Result> = chain<string>()
+  .map((str: string) => str.toUpperCase())
+  .target((str: string) => ({ data: str }));
+
+target.watch((params: string) => 
+  console.log("target", params)
+);
+target.done.watch((result: Result, params: string) =>
+  console.log("target.done", result, params)
+);
+target.fail.watch((error: Error, params: string) =>
+  console.log("target.fail", params, error)
+);
+target.end.watch((params: string) => 
+  console.log("target.end", params)
+);
+
+target("test");                           //=> "target", "TEST"
+
+                                          //=> "target.done", { data: "TEST" }, "TEST"
+                                          //=> "target.end", "TEST"
 ```
 
+## <br/>Stores
 
-### Action Targets
-An action target is the end of a chain. The main difference between an action
-and a target is that the latter has `.done`, `.fail`, and `.finish` methods,
-which can be watched just like triggers.
-
-Create an async action by chaining an action with the `.target` method:
+Stores are designed to be small and granular. They can hold any type of data—objects, 
+arrays, functions, literally anything. No modifications happen behind the scenes; 
+you’re fully in control of all updates.
 
 ```ts
-import { createAction } from "chain-store";
-import type { ActionTarget } from "chain-store";
+import { store } from "chain-store";
 
-const actionTarget: ActionTarget<number, { data: number }> 
-  = createAction<number>().target(async (payload: number) => ({ data: payload }))
+type State = { data: string };
+const $store = store<State>({ data: "init" });
 
-actionTarget.watch((params: number) => 
-  console.log("start", params));
+$store.watch((state: State) => console.log(state.data));
 
-actionTarget.done.watch((result: { data: number }, params: number) => 
-  console.log("done", result, params));
+$store.set({ data: "test1" });            //=> "test1"
 
-actionTarget.fail.watch((error: Error, params: number) => 
-  console.log("fail", error, params));
+const state = $store.get();
+$store.set({ ...state, data: "test2" });  //=> "test2"
 
-actionTarget.finish.watch((params: number) => 
-  console.log("finish", params));
 ```
 
-Action targets return an `ActionPromise`. It’s like a promise, but it isn’t one.
-It’s useful when you need to wait for an async action to complete before doing
-something elsewhere in the app, outside the store.
+<br/>A store can be updated by actions, targets, or updates from other stores:
 
 ```ts
-const actionPromise = actionTarget(20);
+type Data = { name: string };
 
-actionPromise
-  .done((result: { data: number }, params: number) => {
-    console.log(result, params);        // -> { data: 20 }, 20
-  })
-  .fail((error: Error, params: number) => {
-    console.error(error.name, params);
-  })
-  .finish((params: number) => {
-    console.log(params);                // -> 20
-    console.log(actionPromise.state);   // -> "done"
-  })
+const $data = store<Data>({ name: "chain" });
+const $state = store<{ data: Data }>({ data: $data.get() });
 
-console.log(actionPromise.state);     // -> "pending"
-```
-
-**Note I:** An async action fails only if its own callback is rejected. Any other
-rejection earlier in the chain simply stops further execution, so no fail event
-occurs in that case.
-
-### Store
-
-```ts
-import { createStore, createAction } from "chain-store";
-
-type State = { name: string, age: number };
-const initialState: State = { name: "John", age: 30 };
-
-
-const changeName = createAction<string>();
-
-/* Create a store */
-const store = createStore<State>(initialState);
-
-/* Subscribe the store to an action */
-store.on(changeName, (state: State, name: string) => {
-  return { ...state, name: name };
+/*
+  Update one store from another.
+  
+  Alternatively:
+  $data.watch(data => $state.set({ ...$state.get(), data }));
+*/
+$state.on($data, (state, data) => {
+  return { ...state, data };
 });
 
-/* Subscribe to store changes */
-const subscription = store.watch((state: State) => console.log(`My name is ${state.name}`));
+/** Update the store from a target */
+const target = chain<string>().target(
+  (name: string) => ({ name: name.toUpperCase() })
+);
 
-changeName("Alex");  // -> "My name is Alex"
+$data
+  .on(target, (state: Data, name: string) => ({ ...state, name }))
+  .on(target.done, (_, result: Data) => result);
 
-/* Unsubscribe from store changes */
-subscription.dispose();
-
-/* Unsubscribe the store from the action */
-store.off(changeName)
-```
-
-The store also works with mutable state, if needed:
-
-```ts
-const setAge = createAction<number>();
-
-store.on(setAge, (state: State, age: number) => {
-  state.age = age; /* State mutation */
-  return state;
+$state.watch(state => {
+  console.log(state.data.name);
 });
 
-/* Subscribe to partial state updates */
-store
-  .map((state: State) => state.age)
-  .watch((age: number) => console.log(`Now I'm ${age}`));
+$data.set({ name: "store" });             //=> "store"
 
-setAge(42);  // -> "Now I'm 42"
+target("test");                           //=> "test"
+                                          // => "TEST"
 
-/* The store.watch() subscription won't be triggered
-   because the state is the same object */
+/** Unsubscribe */
+$state.off($data);
+$data.off(); /* Removes all subscriptions */
 ```
 
+### <br/>Partial stores
 
+Use `.map` on a store to get and watch only part of its state. Partial stores 
+are read-only and cannot be updated directly.
+
+```ts
+const $store = store({ data: { name: "part" } });
+const $partial = $store.map(state => state.data);
+
+console.log($partial.get());              //=> { name: "part" }
+
+$partial.watch((part: { name: string }) => {
+  console.log(part.name);
+});
+
+$store.set({ data: { name: "test" } });   //=> "test"
+$store.set({ data: $partial.get() });     /* No output: the partial state hasn't changed */
+```
+
+### <br/>Conditional mutability
+
+Stores let you mutate state while notifying watchers only when the watched value changes. Changes are detected using strict equality (`===`).
+
+```ts
+import { chain, store } from "chain-store";
+
+type Data = { name: string };
+
+const setUser = chain<Data>();
+const setName = chain<string>();
+
+const $store = store<Data>({ name: "chain" });
+
+$store
+  .on(setUser, (_, data: Data) => data)
+  .on(setName, (state: Data, name: string) => {
+    state.name = name; /* Mutate the state */
+    return state;      /* A return value is still required */
+  });
+
+$store.watch(data => console.log("data changed"));
+$store.map(user => user.name).watch(() => console.log("name changed"));
+
+setUser({ name: "store" });               //=> "data changed"
+                                          //=> "name changed"
+
+setName("test");                          //=> "name changed"
+
+setUser({ name: "test" });                //=> "data changed"
+
+setUser($store.get());                    /* No output: nothing changed */
+```

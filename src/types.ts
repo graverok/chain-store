@@ -1,75 +1,45 @@
-type ActionCall<Params, Result extends unknown = void> = (
-  params: Params,
-) => Result;
+import { Args, Call, Commands } from "./utils";
 
-export type ActionPromise<
-  Params,
-  Result,
-  Error,
-  Methods = ActionPromiseEvents<Params, Result, Error>,
-  Remaining extends keyof Methods = keyof Methods,
-> = { state: "pending" | "done" | "fail" } & {
-  [K in Remaining]: (
-    fn: Methods[K],
-  ) => ActionPromise<Params, Result, Error, Methods, Exclude<Remaining, K>>;
-};
-
-export type ActionPromiseEvents<Params = any, Result = any, Error = any> = {
-  done: (result: Result, params: Params) => void;
-  fail: (error: Error, params: Params) => void;
-  finish: (params: Params) => void;
-};
-
-export type Args<Params> = Params extends Array<unknown> ? Params : [Params];
-
-export type ActionTargetOptions = {
-  skipDuplicates?: boolean;
-};
-
-export type ChainFn<Input, Output> = (
-  params: Input,
-) => Output | Promise<Output>;
-
-export interface Subscription {
-  dispose: VoidFunction;
-}
+export type Disposer = VoidFunction;
 
 export interface Unit<Params> {
-  watch: (watcher: (...args: Args<Params>) => void) => Subscription;
+  watch: (watcher: (...args: Args<Params>) => void) => Disposer;
 }
+
+export type Command<Input, Output> = (
+  params: Awaited<Input>,
+) => Output | Promise<Output>;
 
 export interface Action<Input = void, Output = Input>
-  extends ActionCall<Input>,
-    Unit<Output> {
-  filter: (fn: ChainFn<Output, boolean>) => Action<Input, Output>;
-  map: <Mapped>(fn: ChainFn<Output, Mapped>) => Action<Input, Mapped>;
-  target: <Result, Err = Error>(
-    fn: ChainFn<Output, Result>,
-  ) => ActionTarget<Input, Result, Output, Err>;
-}
+  extends Call<Input, { val: () => Output }>,
+    Unit<Output>,
+    Commands<Input, Output> {}
 
-export interface ActionTarget<Input, Result, Params = Input, Err = Error>
-  extends ActionCall<Input, ActionPromise<Params, Result, Err>>,
+export interface Target<Input, Params = Input, Result = unknown, Err = Error>
+  extends Call<Input, { val: () => Promise<Result> }>,
     Unit<Params> {
   done: {
-    watch: (watcher: (result: Result, params: Params) => void) => Subscription;
+    watch: (watcher: (result: Result, params: Params) => void) => Disposer;
   };
   fail: {
-    watch: (watcher: (error: Err, params: Params) => void) => Subscription;
+    watch: (watcher: (error: Err, params: Params) => void) => Disposer;
   };
-  finish: { watch: (watcher: (params: Params) => void) => Subscription };
+  end: {
+    watch: (watcher: (params: Params) => void) => Disposer;
+  };
 }
 
 export interface ReadStore<State> {
-  watch: (watcher: (state: State) => void) => Subscription;
-  getState: () => State;
+  watch: (watcher: (state: State) => void) => Disposer;
+  get: () => State;
+  map: <Part>(mapper: (state: State) => Part) => ReadStore<Part>;
 }
 
 export interface Store<State> extends ReadStore<State> {
   on: <T>(
     action: Unit<T>,
-    f: (state: State, ...args: Args<T>) => State,
+    fn: (state: State, ...args: Args<T>) => State,
   ) => Store<State>;
-  off: <T>(action: Unit<T>) => Store<State>;
-  map: <Mapped>(mapper: (state: State) => Mapped) => ReadStore<Mapped>;
+  set: (state: State) => void;
+  off: <T>(action?: Unit<T>) => Store<State>;
 }

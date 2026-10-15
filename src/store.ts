@@ -1,338 +1,246 @@
 import {
   Action,
-  ActionTarget,
-  Args,
-  ChainFn,
+  Target,
   Store,
-  Subscription,
+  Disposer,
   Unit,
-  ActionPromiseEvents,
-  ActionTargetOptions,
-  ActionPromise,
+  Command,
+  ReadStore,
 } from "./types";
 
-export const createAction = <Input = void>() => initAction<Input>();
+import {
+  resolver,
+  caller,
+  splicer,
+  subscriber,
+  waiter,
+  pusher,
+  ActionOptions,
+  Carrier,
+  Emitter,
+  Args,
+  Match,
+  Queue,
+  evaluate,
+} from "./utils";
 
-export const createStore = <State>(initialState: State) => {
-  const disposers: [Unit<unknown>, Subscription][] = [];
-  const watchers: [(state: State) => any, (payload: any) => void][] = [];
-  let watch: Emitter = {};
-  let postponed: VoidFunction[] = [];
-  let blocked = false;
+export const chain = <Input = void>() => createAction<Input>();
+
+export const store = <State>(initialState: State) =>
+  createStore<State>(initialState);
+
+const createStore = <State, Parent extends unknown | void = void>(
+  initialState: State,
+  config?: [Unit<Parent>, (state: Parent) => State],
+): Parent extends void ? Store<State> : ReadStore<State> => {
+  let disposers: [Unit<unknown>, Disposer][] = [];
+  const emitters = [[], []] as unknown as [Emitter, Emitter];
+  const unit = { watch: subscriber(emitters[1]) } as Unit<State>;
+
   let state = initialState;
 
   const off = <U>(action: Unit<U>) =>
-    splicer(disposers, void 0, (x) => x[0] === action)?.[1].dispose();
+    splicer(disposers, void 0, (x) => x[0] === action)?.[1]();
+
+  const set = (next: State) => {
+    const diff = next !== state;
+    state = next;
+    diff && emitters[0][1]?.(state);
+    emitters[1][1]?.(state);
+  };
+
+  config?.[0].watch((...args) => set(config[1](args[0] as Parent)));
 
   const store = {
-    on: <U>(
-      action: Unit<U>,
-      updater: (state: State, ...args: Args<U>) => State,
-    ) => {
-      off(action);
-
-      disposers.push([
-        action,
-        action.watch((...args) => {
-          blocked = true;
-          const parts = watchers.map(([mapper]) => mapper(state));
-          const nextState = updater(state, ...args);
-          if (nextState !== state) {
-            state = nextState;
-            watch.emit?.(state);
-          }
-          for (let i = 0; i < watchers.length; i++) {
-            const mapped = watchers[i][0](state);
-            mapped !== parts[i] && watchers[i][1](mapped);
-          }
-          blocked = false;
-          for (const p of postponed) p();
-          postponed = [];
-        }),
-      ]);
-
-      return store;
-    },
-    off: <U>(action: Unit<U>) => {
-      off(action);
-      return store;
-    },
-    map: <PartState>(mapper: (state: State) => PartState) => ({
-      getState: () => mapper(state),
-      watch: (watcher: (payload: PartState) => void) => {
-        watchers.push([mapper, watcher]);
-        return {
-          dispose: () => {
-            const handler = () =>
-              splicer(
-                watchers,
-                void 0,
-                ([m, w]) => m === mapper && w === watcher,
-              );
-
-            blocked ? postponed.push(handler) : handler();
+    get: () => state,
+    watch: subscriber(emitters[0]),
+    map: <PartState>(mapper: (state: State) => PartState) =>
+      createStore<PartState, State>(mapper(state), [unit, mapper]),
+    ...(config
+      ? {}
+      : {
+          on: <U>(
+            unit: Unit<U>,
+            updater: (state: State, ...args: Args<U>) => State,
+          ) => {
+            off(unit);
+            disposers.push([
+              unit,
+              unit.watch((...args) => set(updater(state, ...args))),
+            ]);
+            return store;
           },
-        };
-      },
-    }),
-    getState: () => state,
-    watch: subscribe(watch),
+          off: <U>(action?: Unit<U>) => {
+            if (action) {
+              off(action);
+            } else {
+              disposers.forEach((d) => d[1]());
+              disposers = [];
+            }
+            return store;
+          },
+          set,
+        }),
   };
-
-  return store as Store<State>;
+  return store as unknown as Parent extends void
+    ? Store<State>
+    : ReadStore<State>;
 };
 
-type CallFn<P = any> = (
-  params: P,
-  queue: VoidFunction[],
-  match?: (call: CallFn) => ActionPromiseEvents | void,
-) => void;
-
-const initAction = <Input = void, Output = Input>(
-  start?: CallFn<Input>,
-  propagate?: (fn: CallFn) => void,
-  map?: (params: any) => Output | Promise<Output>,
-  filter?: (params: Output) => boolean | Promise<boolean>,
+const createAction = <Input = void, Output = Input>(
+  start?: Carrier<Input>,
+  propagate?: (fn: Carrier) => void,
+  map?: (...params: any[]) => Output | Promise<Output>,
+  filter?: (...params: any[]) => boolean | Promise<boolean>,
 ): Action<Input, Output> => {
-  let watch: Emitter = {};
-  const next: CallFn<Output>[] = [];
+  const emitter = [] as unknown as Emitter;
+  const next: Carrier<Output>[] = [];
 
-  const exec: CallFn<Output> = (params, queue, match) => {
-    watch.emit?.(params);
-    next.forEach((call) => queue.push(() => call(params, queue, match)));
-    next.forEach(() => queue.splice(0, 1)[0]());
+  const exec: Carrier<Output> = (params, config: [Queue, Match | void]) => {
+    emitter[1]?.(params);
+    config[1]?.(call)?.(() => params);
+    caller<Output>(params, config)(next);
   };
 
-  const call: CallFn<Input | Output> = (input, queue, match) => {
+  const call: Carrier<Input | Output> = (params, config) => {
     try {
-      if (map) return awaiter(input, map, (res) => exec(res, queue, match));
+      const catcher = (err?: Error) =>
+        config[1]?.()?.(() => {
+          if (err) {
+            err.name = "ChainError";
+            throw err;
+          } else {
+            const err = new Error();
+            err.name = "ChainBlock";
+            throw err;
+          }
+        });
+      if (map)
+        return resolver(params, map, (res) => exec(res, config), catcher);
       if (filter)
-        return awaiter(
-          input as Output,
+        return resolver(
+          params,
           filter,
-          (res) => res && exec(input as Output, queue, match),
+          (res) => {
+            if (res) return exec(params as Output, config);
+            catcher();
+          },
+          catcher,
         );
-      exec(input as Output, queue, match);
+      exec(params as Output, config);
     } catch {}
   };
 
   propagate?.(call);
 
   const action = (input: Input) => {
-    (start ?? call)(input, []);
-    return;
+    const [val, respondent] = evaluate(true);
+    (start ?? call)(input, [
+      [],
+      (carrier) => (!carrier || carrier === call ? respondent : void 0),
+    ]);
+    return { val };
   };
 
-  return Object.assign(action, {
-    watch: subscribe(watch),
-    map: <Mapped>(map: ChainFn<Output, Mapped>): Action<Input, Mapped> =>
-      initAction(start ?? call, pusher(next), map),
-    filter: (filter: ChainFn<Output, boolean>): Action<Input, Output> =>
-      initAction(start ?? call, pusher(next), void 0, filter),
-    target: <Result, Err>(
-      fn: ChainFn<Output, Result>,
-      options?: ActionTargetOptions,
-    ): ActionTarget<Input, Result, Output, Err> =>
-      initActionTarget(start ?? call, pusher(next), fn, options),
-  });
+  return Object.assign(
+    action,
+    createMethods(emitter, start ?? call, next),
+  ) as Action<Input, Output>;
 };
 
-const initActionTarget = <Input, Result, Params = Input, Err = Error>(
-  start: CallFn<Input>,
-  propagate: (fn: CallFn<Params>) => void,
-  target: ChainFn<Params, Result>,
-  options?: ActionTargetOptions,
-): ActionTarget<Input, Result, Params, Err> => {
-  let watch: Emitter = {};
-  let done: Emitter = {};
-  let fail: Emitter = {};
-  let finish: Emitter = {};
+const createTarget = <Input, Result, Params = Input, Err = Error>(
+  start: Carrier<Input>,
+  propagate: (fn: Carrier<Params>) => void,
+  target: (params: Params) => Result | Promise<Result>,
+  options?: ActionOptions,
+) => {
+  const emitter = [[], [], [], []] as unknown as Emitter[];
   const pending: Promise<Result>[] = [];
 
-  const exec = async (
-    params: Params,
-    match?: (call: CallFn) => ActionPromiseEvents | void,
-  ) => {
+  const exec = async (params: Params, match: Match<Result> | void) => {
     const promise = target(params);
-    const events = match?.(call);
 
     if (!(promise instanceof Promise)) {
-      watch.emit?.(params);
+      emitter[0][1]?.(params);
       return waiter(() => {
-        done.emit?.(promise, params);
-        events?.done(promise, params);
+        emitter[1][1]?.(promise, params);
+        match?.(call)?.(() => promise);
       });
     }
 
     const matched = pending.includes(promise);
     const skipDuplicates = options?.skipDuplicates !== false;
     !matched && skipDuplicates && pending.push(promise);
-    (!matched || !skipDuplicates) && watch.emit?.(params);
+    const proceed = !matched || !skipDuplicates;
+    proceed && emitter[0][1]?.(params);
 
     try {
       const result = await promise;
-      (!matched || !skipDuplicates) && done.emit?.(result, params);
-      events?.done(result, params);
+      proceed && emitter[1][1]?.(result, params);
+      match?.(call)?.(() => result);
     } catch (err) {
-      (!matched || !skipDuplicates) && fail.emit?.(err as Err, params);
-      events?.fail(err as Err, params);
+      proceed && emitter[2][1]?.(err as Err, params);
+      match?.(call)?.(() => {
+        throw err;
+      });
     } finally {
-      !matched || !skipDuplicates
-        ? finish.emit?.(params)
+      proceed
+        ? emitter[3][1]?.(params)
         : waiter(() => splicer(pending, promise));
-      events?.finish(params);
     }
   };
 
-  const call: CallFn<Params> = (params, _, match) => {
+  const call: Carrier<Params> = (params, config) => {
     try {
-      waiter(() => exec(params, match));
+      waiter(() => exec(params, config[1]));
     } catch {}
   };
 
   propagate(call);
 
   const action = (input: Input) => {
-    const [events, methods] = promiser();
-    start(input, [], (c) => (c === call ? events : void 0));
-    return methods;
+    const [val, respondent] = evaluate();
+    start(input, [
+      [],
+      (carrier) => (!carrier || carrier === call ? respondent : void 0),
+    ]);
+    return { val };
   };
 
   return Object.assign(action, {
-    watch: subscribe(watch),
-    done: { watch: subscribe(done) },
-    fail: { watch: subscribe(fail) },
-    finish: { watch: subscribe(finish) },
-  }) as ActionTarget<Input, Result, Params, Err>;
+    ...createMethods(emitter[0]),
+    done: createMethods(emitter[1]),
+    fail: createMethods(emitter[2]),
+    end: createMethods(emitter[3]),
+  }) as Target<Input, Params, Result, Err>;
 };
 
-const awaiter = <O, R>(
-  input: O,
-  fn: (input: O) => R | Promise<R>,
-  resolve: (r: R) => void,
+const createMethods = <Input, Output = Input>(
+  emitter: Emitter,
+  start?: Carrier<Input>,
+  next?: Carrier<Awaited<Output>>[],
 ) => {
-  if (!fn) return resolve(input as unknown as R);
-  const res = fn(input);
-  if (!(res instanceof Promise)) return resolve(res);
-  res.then(resolve).catch(() => {});
-};
-
-type PromiseState = "pending" | "done" | "fail";
-type PromiseConfig<Params, Result, Error> = {
-  stored: (Result | Error | Params)[];
-  state: PromiseState;
-  controller: State;
-  set: (state: PromiseState) => void;
-};
-
-const pusher =
-  <U>(arr: U[]) =>
-  (a: U) =>
-    arr.push(a);
-
-const splicer = <U = unknown>(arr: U[], a?: U, compare?: (b: U) => boolean) => {
-  const index = arr.findIndex(compare ?? ((b) => a === b));
-  return index >= 0 ? arr.splice(index, 1)[0] : void 0;
-};
-
-const waiter = (cb: VoidFunction) =>
-  (async () => {})()
-    .then(cb)
-    .catch(() => {});
-
-interface Emitter {
-  watch?: (watcher: (...args: Args<any>) => void) => Subscription;
-  emit?: (...args: Args<any>) => void;
-}
-const subscribe =
-  (emitter: Emitter) =>
-  (callback: (...args: Args<any>) => void): Subscription => {
-    if (emitter?.watch) return emitter.watch(callback);
-
-    const subscribers: ((...args: Args<any>) => void)[] = [];
-
-    const unsubscribe = (watcher: (...args: Args<any>) => void) =>
-      splicer(subscribers, watcher);
-
-    const subscribe = (watcher: (...args: Args<any>) => void) =>
-      !subscribers.includes(watcher) && subscribers.push(watcher);
-
-    emitter.watch = (watcher: (...args: Args<any>) => void) => {
-      subscribe(watcher);
-      return {
-        dispose: () => unsubscribe(watcher),
-      };
-    };
-
-    emitter.emit = (...args: Args<any>) =>
-      subscribers.forEach((watcher) => watcher(...args));
-
-    return emitter.watch(callback);
-  };
-
-class State {
-  constructor(private getState: () => PromiseState) {}
-  get state() {
-    return this.getState();
-  }
-}
-
-const eventKeys = ["done", "fail", "finish"];
-const promiser = <Params, Result, Error>(
-  initialConfig?: PromiseConfig<Params, Result, Error>,
-  methods: {
-    done?: (result: Result, params: Params) => void;
-    fail?: (error: Error, params: Params) => void;
-    finish?: (params: Params) => void;
-  } = {},
-) => {
-  const config: PromiseConfig<Params, Result, Error> = initialConfig ?? {
-    state: "pending",
-    stored: [],
-    set: (s: PromiseState) => (config.state = s),
-    controller: new State(() => config.state),
-  };
-
-  const events = eventKeys.reduce(
-    (acc, key, index) => ({
-      ...acc,
-      [key]: (...args: (Result | Error | Params)[]) => {
-        config.stored[index] = args[0];
-        if (index < 2) config.set(key as PromiseState);
-        //@ts-expect-error
-        methods[key]?.(...args);
-      },
-    }),
-    {} as ActionPromiseEvents<Params, Result, Error>,
-  );
-
-  const init = <K extends keyof typeof methods>(key: K, index: number) => ({
-    [key]: methods[key]
-      ? void 0
-      : (fn: (...args: (Result | Error | Params)[]) => void) => {
-          methods[key] = fn;
-          config.state !== "pending" &&
-            fn(
-              ...[
-                config.stored[index],
-                ...(index < 2 ? [config.stored[2]] : []),
-              ],
-            );
-          return promiser(config, methods)[1];
-        },
-  });
-
-  return [
-    events,
-    Object.assign(
-      config.controller,
-      eventKeys.reduce(
-        (acc, key, index) => ({
-          ...acc,
-          ...init(key as keyof typeof methods, index),
-        }),
-        {},
+  if (!start || !next) return { watch: subscriber(emitter) };
+  return {
+    watch: subscriber(emitter),
+    map: <Mapped>(map: Command<Output, Mapped>): Action<Input, Mapped> =>
+      createAction(start, pusher(next), map as Command<Output, Mapped>),
+    filter: (filter: Command<Output, boolean>): Action<Input, Output> =>
+      createAction(
+        start,
+        pusher(next),
+        void 0,
+        filter as Command<Output, boolean>,
       ),
-    ) as unknown as ActionPromise<Params, Result, Error>,
-  ];
+    target: <Result, Err>(
+      target: Command<Output, Result>,
+      options?: ActionOptions,
+    ): Target<Input, Output, Result, Err> =>
+      createTarget(
+        start,
+        pusher(next),
+        target as Command<Output, Result>,
+        options,
+      ),
+  };
 };

@@ -1,57 +1,89 @@
-![chain-store](https://graverok.github.io/chain-store/chain-store-light.svg)
+<br/>
 
-**A simple event-based state manager!**
+![chain-store](https://graverok.github.io/chain-store/docs/chain-store-light.svg)
+
+**A simple event-based state manager.**
+
+- Events with pre-bound chains of filters and mappings
+- Asynchronous actions for business logic
+- Independent stores that can be watched in full or in part
+- Customizable synchronization between stores, events, and actions
+- Small: **2.49kb** minified, **1.14kb** gzipped
 
 ```ts
-import { createAction, createStore } from "chain-store";
-import type { Action, ActionTarget, Store } from "chain-store";
+// store.ts
+import { chain, store } from "chain-store";
+import type { Action, Target } from "chain-store";
 
-type ExampleData = { name: string, email: string };
+/** Converts a direction into an increment for the current page. */
+const changePage: Action<boolean, number> = chain<boolean>()
+  .map((forward: boolean) => (forward ? 1 : -1));
 
-// Create Action:
-const getData: Action<number> = createAction<number>();
+/** Stores the current page number. */
+const $page = store<number>(1)
+  .on(changePage, (page: number, inc: number) => page + inc);
 
-// Create ActionTarget:
-const fetchData: ActionTarget<number, ExampleData> = getData.target(
-  (id: number) => {
-    return fetch(`/details/?id=${ id }`).then(
-      res => res.json() as ExampleData
-    )
-  }
-    
-);
+/** Fetches users for the current page. */
+type User = { id: number; name: string };
 
-type State = Record<number, {
-  loading: boolean,
-  data: ExampleData | null,
-  error?: string
-}>;
+const fetchUsers: Target<void, number, User[]> = chain()
+  .map(() => $page.get())
+  .target((page: number) =>
+    fetch(`/users?page=${page}`).then((res) => res.json() as Promise<User[]>)
+  );
 
-// Create Store:
-const store: Store<State> = createStore<State>({})
-  // Subscribe to watch changes
-  .on(fetchData, (state: State, params: number) => ({
-    ...state,
-    [params]: { ...state[params], loading: true, error: void 0 }
-  }))
-  .on(fetchData.done, (state: State, result: ExampleData, params: number) => ({
-    ...state,
-    [params]: { data: result, loading: false, error: void 0 }
-  }))
-  .on(fetchData.fail, (state: State, error: Error, params: number) => ({
-    ...state,
-    [params]: { data: null, loading: false, error: error.name }
-  }));
+/** Automatically fetches users when the page changes. */
+$page.watch(() => fetchUsers());
 
-// Trigger Action
-getData(1); 
+/** Stores users by page number. */
+type UserState = Record<number, User[]>;
 
-// Or trigger ActionTarget if you need to execute something when it's completed. 
-fetchData(1)
-  .done((result: ExampleData, params: number) => console.log(result, params))
-  .fail((error: Error, params: number) => console.log(error.name, params))
-  .finish((params: number) => console.log(params));
+const $users = store<UserState>({})
+  .on(
+    fetchUsers.done,
+    (state: UserState, result: User[], params: number) => ({
+      ...state,
+      [params]: result,
+    })
+  );
 
+export { $users, changePage, fetchUsers };
 ```
 
-More info on [**github.com/graverok/chain-store**](https://github.com/graverok/chain-store)
+```ts
+// app.ts
+import { chain } from "chain-store";
+import { changePage, fetchUsers } from "./store";
+
+/** Creates an action to add a user. */
+const addUser = chain<void, string>()
+  .map(() => prompt("Enter the user's name"))
+  .filter((name: string | null) => Boolean(name))
+  .target((name) =>
+    fetch(`/adduser?name=${name as string}`, { method: "PUT" })
+  );
+
+/** Refreshes the current page after a user is added. */
+addUser.done.watch(() => fetchUsers());
+
+const buttonAddUser = document.querySelector<HTMLButtonElement>("#submit");
+
+if (buttonAddUser) {
+  buttonAddUser.addEventListener("click", () => {
+    buttonAddUser.setAttribute("disabled", "true");
+    addUser()
+      .val()
+      .finally(() => buttonAddUser.removeAttribute("disabled"));
+  });
+}
+
+document
+  .querySelector("#next-page")
+  ?.addEventListener("click", () => changePage(true));
+
+document
+  .querySelector("#prev-page")
+  ?.addEventListener("click", () => changePage(false));
+```
+
+[More information](https://github.com/graverok/chain-store)

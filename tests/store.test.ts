@@ -1,64 +1,183 @@
 import { expect, test } from "vitest";
-import { createAction, createStore } from "../src";
+import { chain, store } from "../src";
 import { delay, mapper } from "./utils";
 
-let res: any[] = [];
-const handler = (p: string) => (r: number | { data: number }) =>
-  res.push(`${p}-${typeof r === "number" ? r : `data-${r.data}`}`);
+let res: string = "";
+const handler = (p: string) => (r: any) => {
+  res = (res + ` ${p}-${r}`).trim();
+};
 
 test("store", async () => {
-  const act1 = createAction<number>();
-  const tar1 = act1.target(mapper(2));
-  const store = createStore<{ data: number }>({ data: 0 });
+  const fn1 = chain<number>();
+  const act1 = fn1.target(mapper(2));
+  const $store = store(0);
 
-  store.on(act1, (state, n) => {
-    if (n === state.data) return state;
+  $store.on(fn1, (state, n) => state + n).on(act1.done, (_, result) => result);
 
-    if (n === 10) {
-      state.data = n;
-      return state;
-    }
+  $store.watch(handler("s"));
 
-    return { ...state, data: n };
-  });
-  store.on(tar1.done, (state, result) => {
-    if (result === state.data) return state;
+  fn1(0);
+  expect(res).toBe("");
+  expect($store.get()).toBe(0);
 
-    if (result === 10) {
-      state.data = result;
-      return state;
-    }
+  fn1(1);
+  expect(res).toBe("s-1");
+  expect($store.get()).toBe(1);
 
-    return { ...state, data: result };
-  });
+  fn1(5);
+  expect(res).toBe(`s-1 s-6`);
+  expect($store.get()).toBe(6);
 
-  res = [];
-  store.watch(handler("s"));
-  store.map((s) => s.data).watch(handler("s1"));
+  $store.off(fn1);
 
-  act1(0);
-  expect(res).toEqual([]);
+  fn1(10);
+  expect(res).toBe(`s-1 s-6`);
+  expect($store.get()).toBe(6);
 
-  act1(5);
-  expect(res).toEqual(["s-data-5", "s1-5"]);
-
-  act1(10);
-  expect(res).toEqual(["s-data-5", "s1-5", "s1-10"]);
-
-  store.off(act1);
-  act1(20);
-  expect(res).toEqual(["s-data-5", "s1-5", "s1-10"]);
-
-  res = [];
   await delay();
-  await delay(200);
-  expect(res).toEqual([
-    "s-data-0",
-    "s1-0",
-    "s1-10",
-    "s-data-20",
-    "s1-20",
-    "s-data-40",
-    "s1-40",
-  ]);
+  await delay(300);
+
+  expect(res).toBe(`s-1 s-6 s-0 s-2 s-10 s-20`);
+  expect($store.get()).toBe(20);
+  res = "";
+
+  $store.set(100);
+  expect(res).toBe("s-100");
+  expect($store.get()).toBe(100);
+  res = "";
+});
+
+test("store unwatch", async () => {
+  const fn1 = chain();
+  const $store = store(0);
+
+  $store.on(fn1, (state) => state + 1);
+
+  const unwatch = $store.watch((s) => {
+    handler("s")(s);
+    if (s === 2) unwatch();
+  });
+  fn1();
+  expect(res).toBe("s-1");
+  fn1();
+  expect(res).toBe("s-1 s-2");
+  fn1();
+  expect(res).toBe("s-1 s-2");
+
+  $store.watch((s) => {
+    handler("s")(s);
+    if (s === 2) unwatch();
+  });
+  fn1();
+  expect(res).toBe("s-1 s-2 s-4");
+
+  $store.off(fn1);
+  fn1();
+  expect(res).toBe("s-1 s-2 s-4");
+  res = "";
+});
+
+test("store off()", () => {
+  const fn1 = chain<number>();
+  const fn2 = chain<string>();
+  const $store = store({ n: 0, s: "x" })
+    .on(fn1, (state, n) => ({ ...state, n }))
+    .on(fn2, (state, s) => ({ ...state, s }));
+
+  $store.watch(({ n, s }) => handler("s")(`${n}:${s}`));
+
+  fn1(5);
+  fn2("test");
+
+  expect(res).toBe(`s-5:x s-5:test`);
+  $store.off();
+  fn1(10);
+  expect(res).toBe(`s-5:x s-5:test`);
+  res = "";
+
+  $store.set({ n: 100, s: "store" });
+  expect(res).toBe(`s-100:store`);
+  res = "";
+});
+
+test("store mutability", async () => {
+  type User = { name: string };
+  type State = { user: User };
+  const state = chain<State>();
+  const user = chain<User>();
+  const name = chain<string>();
+
+  const $store = store<State>({ user: { name: "aleks" } });
+
+  $store
+    .on(state, (_, state) => state)
+    .on(user, (state, user: User) => {
+      state.user = user;
+      return state;
+    })
+    .on(name, (state: State, name: string) => {
+      state.user.name = name;
+      return state;
+    });
+
+  $store.watch(() => handler("state")("change"));
+
+  const $user = $store.map((state) => state.user);
+  $user.watch(() => handler("user")("change"));
+  $user.map((state) => state.name).watch(() => handler("name")("change"));
+
+  user({ name: "test" });
+  expect(res).toBe(`user-change name-change`);
+  res = "";
+
+  name("aleks");
+  expect(res).toBe(`name-change`);
+  res = "";
+
+  user({ name: "aleks" });
+  expect(res).toBe(`user-change`);
+  res = "";
+
+  user($user.get());
+  expect(res).toBe("");
+  res = "";
+
+  state({ user: $user.get() });
+  expect(res).toBe(`state-change`);
+  res = "";
+
+  state({ user: { name: "aleks" } });
+  expect(res).toBe(`state-change user-change`);
+  res = "";
+
+  state($store.get());
+  expect(res).toBe("");
+  res = "";
+
+  $store.set({ user: $user.get() });
+  expect(res).toBe("state-change");
+  res = "";
+
+  $store.set($store.get());
+  expect(res).toBe("");
+
+  $store.set({ user: { name: "aleks" } });
+  expect(res).toBe("state-change user-change");
+  res = "";
+});
+
+test("store subscription", async () => {
+  const $name = store("aleks");
+  const $user = store({ name: $name.get() });
+
+  const name = chain<string>();
+  $name.on(name, (_, name) => name);
+
+  $user.on($name, (state, name) => {
+    return { ...state, name };
+  });
+
+  name("john");
+  expect($name.get()).toEqual("john");
+  expect($user.get()).toEqual({ name: "john" });
 });
