@@ -7,7 +7,7 @@
 - Asynchronous actions for business logic
 - Independent stores that can be watched in full or in part
 - Customizable synchronization between stores, events, and actions
-- Small: **2.49kb** minified, **1.14kb** gzipped
+- Small: **2.49kb** minified, **1.14kb** gzipped. Zero dependencies.
 
 ## <br/>Installation
 
