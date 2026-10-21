@@ -15,7 +15,6 @@ import {
   subscriber,
   waiter,
   pusher,
-  ActionOptions,
   Carrier,
   Emitter,
   Args,
@@ -152,7 +151,6 @@ const createTarget = <Input, Result, Params = Input, Err = Error>(
   start: Carrier<Input>,
   propagate: (fn: Carrier<Params>) => void,
   target: (params: Params) => Result | Promise<Result>,
-  options?: ActionOptions,
 ) => {
   const emitter = [[], [], [], []] as unknown as Emitter[];
   const pending: Promise<Result>[] = [];
@@ -168,25 +166,23 @@ const createTarget = <Input, Result, Params = Input, Err = Error>(
       });
     }
 
-    const matched = pending.includes(promise);
-    const skipDuplicates = options?.skipDuplicates !== false;
-    !matched && skipDuplicates && pending.push(promise);
-    const proceed = !matched || !skipDuplicates;
-    proceed && emitter[0][1]?.(params);
+    const duplicate = pending.includes(promise);
+    !duplicate && pending.push(promise);
+    !duplicate && emitter[0][1]?.(params);
 
     try {
       const result = await promise;
-      proceed && emitter[1][1]?.(result, params);
+      !duplicate && emitter[1][1]?.(result, params);
       match?.(call)?.(() => result);
     } catch (err) {
-      proceed && emitter[2][1]?.(err as Err, params);
+      !duplicate && emitter[2][1]?.(err as Err, params);
       match?.(call)?.(() => {
         throw err;
       });
     } finally {
-      proceed
-        ? emitter[3][1]?.(params)
-        : waiter(() => splicer(pending, promise));
+      duplicate
+        ? waiter(() => splicer(pending, promise))
+        : emitter[3][1]?.(params);
     }
   };
 
@@ -234,13 +230,7 @@ const createMethods = <Input, Output = Input>(
       ),
     target: <Result, Err>(
       target: Command<Output, Result>,
-      options?: ActionOptions,
     ): Target<Input, Output, Result, Err> =>
-      createTarget(
-        start,
-        pusher(next),
-        target as Command<Output, Result>,
-        options,
-      ),
+      createTarget(start, pusher(next), target as Command<Output, Result>),
   };
 };

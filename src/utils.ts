@@ -12,10 +12,6 @@ export type Carrier<P = any, R = any> = (
   config: [Queue, Match<R> | void],
 ) => void;
 
-export type ActionOptions = {
-  skipDuplicates?: boolean;
-};
-
 export type Call<Params, Result extends unknown = void> = (
   params: Params,
 ) => Result;
@@ -48,8 +44,9 @@ export type Emitter = [
 export const caller =
   <P>(...args: Parameters<Carrier<P>>) =>
   (next: Carrier<P>[]) => {
-    next.forEach((call) => args[1][0].push(() => call(...args)));
-    next.forEach(() => args[1][0].splice(0, 1)[0]());
+    const queue = args[1][0];
+    next.forEach((call) => queue.push(() => call(...args)));
+    next.forEach(() => queue.shift()!());
   };
 
 export const resolver = <P, R>(
@@ -73,13 +70,13 @@ export const splicer = <U = unknown>(
   a?: U,
   compare?: (b: U) => boolean,
 ) => {
-  const index = arr.findIndex(compare ?? ((b) => a === b));
+  const index = compare ? arr.findIndex(compare) : arr.indexOf(a as U);
   return index >= 0 ? arr.splice(index, 1)[0] : void 0;
 };
 
-export const waiter = (cb: VoidFunction) =>
-  (async () => {})()
-    .then(cb)
+export const waiter = (fn: VoidFunction) =>
+  Promise.resolve()
+    .then(fn)
     .catch(() => {});
 
 export const subscriber =
@@ -89,15 +86,14 @@ export const subscriber =
 
     const subscribers: ((...args: any[]) => void)[] = [];
 
-    const unsubscribe = (watcher: (...args: any[]) => void) =>
-      splicer(subscribers, watcher);
-
     const subscribe = (watcher: (...args: any[]) => void) =>
       !subscribers.includes(watcher) && subscribers.push(watcher);
 
     emitter[0] = (watcher: (...args: any[]) => void) => {
       subscribe(watcher);
-      return () => unsubscribe(watcher);
+      return () => {
+        splicer(subscribers, watcher);
+      };
     };
 
     emitter[1] = (...args: any[]) =>
