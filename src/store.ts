@@ -6,7 +6,7 @@ import {
   Unit,
   Command,
   ReadStore,
-} from "./types.ts";
+} from "./types";
 
 import {
   resolver,
@@ -20,7 +20,7 @@ import {
   Match,
   Queue,
   evaluate,
-} from "./utils.ts";
+} from "./utils";
 
 export const chain = <Input = void>() => createAction<Input>();
 
@@ -61,9 +61,9 @@ const createStore = <State, Parent extends unknown | void = void>(
             unit: Unit<P, X>,
             updater: (state: State, payload: P, ext: X) => State,
           ) => {
-            off(unit as Unit);
+            off(unit as unknown as Unit);
             disposers.push([
-              unit as Unit,
+              unit as unknown as Unit,
               unit.watch((...args) => set(updater(state, ...args))),
             ]);
             return store;

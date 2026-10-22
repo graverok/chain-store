@@ -1,4 +1,4 @@
-import { Call, Commands } from "./utils.ts";
+import { Call, Commands } from "./utils";
 
 export type Disposer = VoidFunction;
 

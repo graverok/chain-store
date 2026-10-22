@@ -1,14 +1,16 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
-import { resolve } from "path";
+
+const entry = fileURLToPath(new URL("./src/index.ts", import.meta.url));
 
 export default defineConfig({
   build: {
+    emptyOutDir: false,
     lib: {
-      name: "chain-store",
-      entry: resolve(__dirname, "src/index.ts"),
-      formats: ["es", "umd"],
-      fileName: (format) => `index.${format}.js`,
+      entry,
+      formats: ["es", "cjs"],
+      fileName: (format) => (format === "es" ? "index.js" : "index.cjs"),
     },
   },
   plugins: [dts({ insertTypesEntry: true })],

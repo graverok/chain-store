@@ -1,4 +1,4 @@
-import { Action, Target, Command, Disposer } from "./types.ts";
+import { Action, Target, Command, Disposer } from "./types";
 
 export type Match<R = any> = (
   carrier?: Carrier,

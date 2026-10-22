@@ -1,7 +1,7 @@
 {
   "name": "chain-store",
-  "description": "Simple event-based state manager",
-  "version": "0.0.6",
+  "description": "Tiny, dependency-free state manager with event-driven stores, extensible action chains, and async workflows.",
+  "version": "0.0.7",
   "author": {
     "name": "Aleksandr Gurianov",
     "url": "http://golova.pro"
@@ -14,16 +14,18 @@
   "bugs": {
     "url": "https://github.com/graverok/chain-store/issues"
   },
-  "type": "module",
   "license": "MIT",
-  "module": "dist/index.es.js",
-  "main": "dist/index.udm.js",
-  "types": "dist/index.d.ts",
   "keywords": [
-    "business-logic",
-    "event-based",
     "state-management",
     "state-manager",
+    "state-store",
+    "event-driven",
+    "event-based",
+    "typescript",
+    "javascript",
+    "async-actions",
+    "lightweight",
+    "zero-dependencies",
     "chain-store"
   ],
   "devDependencies": {
@@ -39,12 +41,8 @@
     "vitest": "^5.0.4"
   },
   "scripts": {
-    "build": "tsc && vitest --run && vite build",
-    "size": "yarn build && brotli ./dist/index.umd.js && gzip ./dist/index.umd.js -9 -k",
+    "build": "node scripts/clean-dist.mjs && tsc --noEmit && vitest --run && vite build && node scripts/prepare-dist.mjs",
+    "size": "yarn build && brotli ./dist/index.cjs && gzip ./dist/index.cjs -9 -k",
     "test": "vitest"
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ]
+  }
 }
