@@ -131,5 +131,29 @@ test("action val", async () => {
     res = (err as Error).name;
   }
 
-  expect(res).toBe("ChainBlock");
+  expect(res).toBe("ChainFilter");
+  res = "";
+});
+
+test("action function types", async () => {
+  const fn1 = chain<unknown>();
+
+  const func = async (r: number) => r;
+
+  fn1.watch((data) => {
+    res =
+      typeof data === "function"
+        ? "function"
+        : data instanceof Promise
+          ? "promise"
+          : "";
+  });
+
+  fn1(func);
+  expect(res).toBe("function");
+
+  await delay();
+
+  fn1(func(10));
+  expect(res).toBe("promise");
 });

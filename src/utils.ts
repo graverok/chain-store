@@ -1,6 +1,4 @@
-import { Action, Target, Command, Disposer } from "./types";
-
-export type Args<Params> = Params extends Array<unknown> ? Params : [Params];
+import { Action, Target, Command, Disposer } from "./types.ts";
 
 export type Match<R = any> = (
   carrier?: Carrier,
@@ -74,7 +72,7 @@ export const splicer = <U = unknown>(
   return index >= 0 ? arr.splice(index, 1)[0] : void 0;
 };
 
-export const waiter = (fn: VoidFunction) =>
+export const awaiter = (fn: VoidFunction) =>
   Promise.resolve()
     .then(fn)
     .catch(() => {});

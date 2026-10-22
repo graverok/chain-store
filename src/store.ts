@@ -6,22 +6,21 @@ import {
   Unit,
   Command,
   ReadStore,
-} from "./types";
+} from "./types.ts";
 
 import {
   resolver,
   caller,
   splicer,
   subscriber,
-  waiter,
+  awaiter,
   pusher,
   Carrier,
   Emitter,
-  Args,
   Match,
   Queue,
   evaluate,
-} from "./utils";
+} from "./utils.ts";
 
 export const chain = <Input = void>() => createAction<Input>();
 
@@ -32,13 +31,13 @@ const createStore = <State, Parent extends unknown | void = void>(
   initialState: State,
   config?: [Unit<Parent>, (state: Parent) => State],
 ): Parent extends void ? Store<State> : ReadStore<State> => {
-  let disposers: [Unit<unknown>, Disposer][] = [];
+  let disposers: [Unit, Disposer][] = [];
   const emitters = [[], []] as unknown as [Emitter, Emitter];
   const unit = { watch: subscriber(emitters[1]) } as Unit<State>;
 
   let state = initialState;
 
-  const off = <U>(action: Unit<U>) =>
+  const off = (action: Unit) =>
     splicer(disposers, void 0, (x) => x[0] === action)?.[1]();
 
   const set = (next: State) => {
@@ -58,18 +57,18 @@ const createStore = <State, Parent extends unknown | void = void>(
     ...(config
       ? {}
       : {
-          on: <U>(
-            unit: Unit<U>,
-            updater: (state: State, ...args: Args<U>) => State,
+          on: <P, X>(
+            unit: Unit<P, X>,
+            updater: (state: State, payload: P, ext: X) => State,
           ) => {
-            off(unit);
+            off(unit as Unit);
             disposers.push([
-              unit,
+              unit as Unit,
               unit.watch((...args) => set(updater(state, ...args))),
             ]);
             return store;
           },
-          off: <U>(action?: Unit<U>) => {
+          off: (action?: Unit) => {
             if (action) {
               off(action);
             } else {
@@ -110,7 +109,7 @@ const createAction = <Input = void, Output = Input>(
             throw err;
           } else {
             const err = new Error();
-            err.name = "ChainBlock";
+            err.name = "ChainFilter";
             throw err;
           }
         });
@@ -160,7 +159,7 @@ const createTarget = <Input, Result, Params = Input, Err = Error>(
 
     if (!(promise instanceof Promise)) {
       emitter[0][1]?.(params);
-      return waiter(() => {
+      return awaiter(() => {
         emitter[1][1]?.(promise, params);
         match?.(call)?.(() => promise);
       });
@@ -181,14 +180,14 @@ const createTarget = <Input, Result, Params = Input, Err = Error>(
       });
     } finally {
       duplicate
-        ? waiter(() => splicer(pending, promise))
+        ? awaiter(() => splicer(pending, promise))
         : emitter[3][1]?.(params);
     }
   };
 
   const call: Carrier<Params> = (params, config) => {
     try {
-      waiter(() => exec(params, config[1]));
+      awaiter(() => exec(params, config[1]));
     } catch {}
   };
 

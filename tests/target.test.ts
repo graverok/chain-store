@@ -183,5 +183,5 @@ test("target val", async () => {
     .catch((err) => handler("a1")(err.name));
   await delay();
   await delay(300);
-  expect(res).toBe(`a1-"ChainBlock"`);
+  expect(res).toBe(`a1-"ChainFilter"`);
 });

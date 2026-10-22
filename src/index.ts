@@ -1,2 +1,2 @@
-export * from "./store";
-export * from "./types";
+export * from "./store.ts";
+export * from "./types.ts";

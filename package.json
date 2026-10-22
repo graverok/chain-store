@@ -14,6 +14,7 @@
   "bugs": {
     "url": "https://github.com/graverok/chain-store/issues"
   },
+  "type": "module",
   "license": "MIT",
   "module": "dist/index.es.js",
   "main": "dist/index.udm.js",
@@ -38,7 +39,8 @@
     "vitest": "^5.0.4"
   },
   "scripts": {
-    "build": "vite build",
+    "build": "tsc && vitest --run && vite build",
+    "size": "yarn build && brotli ./dist/index.umd.js && gzip ./dist/index.umd.js -9 -k",
     "test": "vitest"
   },
   "files": [
