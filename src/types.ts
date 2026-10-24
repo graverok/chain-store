@@ -9,13 +9,13 @@ export interface Unit<P = any, X = void> {
 export type Command<I, O> = (params: Awaited<I>) => O | Promise<O>;
 
 export interface Action<Input = void, Output = Input>
-  extends Call<Input, { val: () => Output }>,
+  extends
+    Call<Input, { val: () => Output }>,
     Unit<Output>,
     Commands<Input, Output> {}
 
 export interface Target<Input, Params = Input, Result = unknown, Err = Error>
-  extends Call<Input, { val: () => Promise<Result> }>,
-    Unit<Params> {
+  extends Call<Input, { val: () => Promise<Result> }>, Unit<Params> {
   done: Unit<Result, Params>;
   fail: Unit<Err, Params>;
   end: Unit<Params>;
