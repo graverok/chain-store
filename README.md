@@ -3,11 +3,12 @@
 ![chain-store](./docs/chain-store-light.svg?sanitize=true#gh-light-mode-only)![chain-store](./docs/chain-store-dark.svg?sanitize=true#gh-dark-mode-only)
 
 **A simple event-based state manager.**<br/>
-- Events with pre-bound chains of filters and mappings;
-- Asynchronous actions for business logic;
+- Actions with pre-bound chains of filters and mappings;
+- Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
-- Customizable synchronization between stores, events, and actions;
-- Small: **2.24 kb** minified, **945 bytes** brotlied. Zero dependencies.
+- Customizable synchronization between stores, actions, and tasks;
+- Built-in tree-shaking support for **React/Preact**, **Vue**, **Angular**, **Solid**.
+- Small: **2.23 kB** minified, **1.04 kB** gzipped. Zero dependencies.
 
 ### Installation
 
@@ -15,31 +16,28 @@
 npm install chain-store
 ```
 
----
+
 
 ### Table of contents:
-- [**Actions**](#actions)
-- [**Targets**](#targets)
-- [**Stores**](#stores)
-    - [Partial stores](#partial-stores)
-    - [Optional mutability](#optional-mutability)
-- [**Additional info**](#additional-info)
-    - [.val()](#val)
-    - [Chain life cycle](#chain-life-cycle)
-- [**Types summary**](#types-summary)
+- [**Action**](#action)<br/>
+- [**Task**](#task)<br/>
+- [**Store**](#store):  [Partial store](#partial-store)  •  [Optional mutability](#optional-mutability)<br/>
+- **Integration**:  [React/Preact](#react-preact)  •  [Vue](#vue)  •  [Solid](#solid)  •  [Angular](#angular)<br/>
+- **Additional info**:  [.val()](#val)  •  [Chain life cycle](#chain-life-cycle)<br/>
+- [**Types summary**](#types-summary)<br/>
 
 <br/>
 
-## Actions
+# Action
 
 An **action** takes an `Input` and emits an `Output` through a chain of commands. A chain supports three types of commands:
 
 - **`.map`** transforms the value from the previous command and passes the result to the next command.
 - **`.filter`** conditionally stops execution based on the value from the previous command.
-- **`.target`** returns a [Target](#targets): an asynchronous action designed for business logic.
+- **`.task`** returns a [Task](#tasks): an asynchronous action designed for business logic.
 
 ```ts
-import { chain, Action } from "chain-store";
+import { chain, type Action } from "chain-store";
 
 /** Create an action */
 const testAction: Action<number, string> = chain<number>()
@@ -58,10 +56,10 @@ testAction(-1000);                        /* Filtered out: (n > 0) */
 unwatch();
 ```
 
-<br/>You can split a chain into separate actions to suit your needs. Triggering any action in the chain causes the other actions to emit their respective outputs.
+<br/>You can split a chain into separate actions as needed. Calling any action in the chain causes the other actions to emit their respective outputs.
 
 ```ts
-import { chain, Action } from "chain-store";
+import { chain, type Action } from "chain-store";
 
 const setNumber: Action<number, number> = chain<number>();
 const positiveOnly: Action<number, number> = setNumber.filter(n => n > 0);
@@ -87,54 +85,47 @@ const action: Action<number, Promise<string>> = chain()
 
 <br/>
 
-## Targets
+# Task
 
-Targets are the logical endpoints of chains, designed for business logic. When called,
-a target emits its input parameters. It also emits a success or failure event when
-the operation is fulfilled or rejected, similar to a promise. Targets are always
-asynchronous, even when given a regular function.
+Tasks are the logical endpoints of chains and are designed for business logic. When called, a task emits its input parameters. It also emits a success or failure event when the operation resolves or rejects, much like a promise. Tasks are always asynchronous, even when given a synchronous function.
 
-Create a target by adding the `.target` command to an action chain.
+Create a task by adding the `.task` command to an action chain.
 
 ```ts
-import { chain, Target } from "chain-store";
+import { chain, type Task } from "chain-store";
 
 type Result = { data: string };
 
-const target: Target<string, string, Result> = chain<string>()
+const task: Task<string, string, Result> = chain<string>()
   .map((str: string) => str.toUpperCase())
-  .target((str: string) => ({ data: str }));
+  .task((str: string) => ({ data: str }));
 
-target.watch((params: string) => 
-  console.log("target", params)
+task.watch((params: string) => 
+  console.log("task", params)
 );
-target.done.watch((result: Result, params: string) =>
-  console.log("target.done", result, params)
+task.done.watch((result: Result, params: string) =>
+  console.log("task.done", result, params)
 );
-target.fail.watch((error: Error, params: string) =>
-  console.log("target.fail", params, error)
+task.fail.watch((error: Error, params: string) =>
+  console.log("task.fail", params, error)
 );
-target.end.watch((params: string) => 
-  console.log("target.end", params)
+task.end.watch((params: string) => 
+  console.log("task.end", params)
 );
 
-target("test");                           //=> "target", "TEST"
+task("test");                             //=> "task", "TEST"
 
-                                          //=> "target.done", { data: "TEST" }, "TEST"
-                                          //=> "target.end", "TEST"
+                                          //=> "task.done", { data: "TEST" }, "TEST"
+                                          //=> "task.end", "TEST"
 ```
 
-If a target command returns exactly the same (`===`) promise that is currently 
-pending within the target, emission will be skipped to avoid unnecessary store updates. 
-If a chain blocks or throws an error before target execution, no fail event will occur.
+If a task command returns the same (`===`) promise that is already pending within the task, the emission is skipped to avoid unnecessary store updates. If a chain is blocked or an error is thrown before the task runs, no fail event is emitted.
 
 <br/>
 
-## Stores
+# Store
 
-Stores are designed to be small and granular. They can hold any type of data—objects,
-arrays, functions, literally anything. No modifications happen behind the scenes;
-you’re fully in control of all updates.
+Stores are small and granular. They can hold any type of data—objects, arrays, functions, or anything else. No changes happen behind the scenes; you control all updates.
 
 ```ts
 import { store } from "chain-store";
@@ -151,7 +142,7 @@ $store.set({ ...state, data: "test2" });  //=> "test2"
 
 ```
 
-<br/>A store can be updated by actions, targets, or updates from other stores:
+<br/>A store can be updated by actions, tasks, or other stores:
 
 ```ts
 type Data = { name: string };
@@ -169,14 +160,14 @@ $state.on($data, (state, data) => {
   return { ...state, data };
 });
 
-/** Update the store from a target */
-const target = chain<string>().target(
+/** Update the store from a task */
+const task = chain<string>().task(
   (name: string) => ({ name: name.toUpperCase() })
 );
 
 $data
-  .on(target, (state: Data, name: string) => ({ ...state, name }))
-  .on(target.done, (_, result: Data) => result);
+  .on(task, (state: Data, name: string) => ({ ...state, name }))
+  .on(task.done, (_, result: Data) => result);
 
 $state.watch(state => {
   console.log(state.data.name);
@@ -184,7 +175,7 @@ $state.watch(state => {
 
 $data.set({ name: "store" });             //=> "store"
 
-target("test");                           //=> "test"
+task("test");                             //=> "test"
                                           // => "TEST"
 
 /** Unsubscribe */
@@ -194,10 +185,9 @@ $data.off(); /* Removes all subscriptions */
 
 ---
 
-### Partial stores
+### Partial store
 
-Use `.map` on a store to get and watch only part of its state. Partial stores
-are read-only and cannot be updated directly.
+Use `.map` on a store to read and watch only part of its state. Partial stores are read-only and cannot be updated directly.
 
 ```ts
 const $store = store({ data: { name: "part" } });
@@ -217,8 +207,7 @@ $store.set({ data: $partial.get() });     /* No output: the partial state hasn't
 
 ### Optional mutability
 
-Stores let you mutate state while notifying watchers only when the watched value
-changes. Changes are detected using strict equality (`===`).
+Stores let you mutate state while notifying watchers only when the watched value changes. Changes are detected using strict equality (`===`).
 
 ```ts
 import { chain, store } from "chain-store";
@@ -231,11 +220,11 @@ const setName = chain<string>();
 const $store = store<Data>({ name: "chain" });
 
 $store
-  .on(setUser, (_, data: Data) => data)
-  .on(setName, (state: Data, name: string) => {
-    state.name = name; /* Mutate the state */
-    return state;      /* A return value is still required */
-  });
+        .on(setUser, (_, data: Data) => data)
+        .on(setName, (state: Data, name: string) => {
+          state.name = name; /* Mutate the state */
+          return state;      /* A return value is still required */
+        });
 
 $store.watch(data => console.log("data changed"));
 $store.map(user => user.name).watch(() => console.log("name changed"));
@@ -252,12 +241,178 @@ setUser($store.get());                    /* No output: nothing changed */
 
 <br/>
 
+## Integration
+
+<span id="react-preact"/>
+
+### React<small><sup> `v16.8+`</sup></small> / Preact<small><sup> `v10+`</sup></small>
+
+```tsx
+/* Re-exports core functions and types */
+import { chain, store, useStore, type Store } from "chain-store/react";
+/* for Preact: "chain-store/preact"; */
+import { useEffect } from "react";
+
+/* Store */
+const fetchUsers = chain().task(() => fetch("/users").then(result => result.json()));
+const $users: Store<User[]> = store<User[]>([])
+        .on(fetchUsers.done, (_, result: User[]) => result);
+
+/* App */
+const App = () => {
+  const users: User[] = useStore($users);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  return <ul>
+    { users.map((user) => <li key={ user.id }>{ user.name }</li>) }
+  </ul>;
+};
+```
+
+**useStore** has an optional second argument: a dependency array. Use it with mapped stores to control subscriptions.
+```ts
+useStore<State>(
+        $store: Store<State>,
+        deps: DependencyList = [$store]
+) => State;
+```
+
+---
+<span id="vue"/>
+
+### Vue<small><sup> `v3.3+`</sup></small>
+
+```vue
+<script lang="ts">
+  /* Re-exports core functions and types */
+  import { chain, store, useStore, type Store } from "chain-store/vue";
+
+  const fetchUsers = chain().task(() => fetch("/users").then(result => result.json()));
+  const $users: Store<User[]> = store<User[]>([])
+          .on(fetchUsers.done, (_, result: User[]) => result);
+</script>
+
+<script setup lang="ts">
+  fetchUsers();
+  const users = useStore($users);
+</script>
+
+<template>
+  <ul>
+    <li v-for="user in users">
+      {{ user.name }}
+    </li>
+  </ul>
+</template>
+```
+
+**useStore** can take a store getter as its first argument. It also accepts an optional dependency array as its second argument. Use the getter and dependencies to control subscriptions.
+
+```ts
+useStore<State>(
+        $store: Store<State> | (() => Store<State>),
+        deps: WatchSource<unknown>[] = [],
+) => readonly Ref<State>;
+```
+
+---
+<span id="solid"/>
+
+### Solid<small><sup> `v1.x`</sup></small>
+
+```tsx
+/* Re-exports core functions and types */
+import { chain, store, useStore, type Store } from "chain-store/solid";
+
+/* Store */
+const fetchUsers = chain().task(() => fetch("/users").then(result => result.json()));
+const $users: Store<User[]> = store<User[]>([])
+        .on(fetchUsers.done, (_, result: User[]) => result);
+
+/* App */
+const App = () => {
+  const users = useStore($users);
+
+  fetchUsers();
+
+  return <ul>
+    { users().map((user) => <li key={ user.id }>{ user.name }</li>) }
+  </ul>;
+};
+```
+
+**useStore** can take a store getter as its first argument. It also accepts an optional dependency array as its second argument. Use the getter and dependencies to control subscriptions.
+
+```ts
+useStore<State>(
+        $store: Store<State> | (() => Store<State>),
+        deps: Accessor<unknown>[] = [],
+) => Accessor<State>;
+```
+
+---
+<span id="angular"/>
+
+### Angular<small><sup> `v16.x+`</sup></small>
+
+```ts
+/* Re-exports core functions and types */
+import { chain, store, useStore, type Store } from "chain-store/angular";
+import { Component } from "@angular/core";
+import { CommonModule } from "@angular/common";
+
+/* Store */
+interface User {
+  id: number;
+  name: string;
+}
+
+const fetchUsers = chain().task(() =>
+        fetch("/users").then(result => result.json() as Promise<User[]>)
+);
+const $users: Store<User[]> = store<User[]>([])
+        .on(fetchUsers.done, (_, result: User[]) => result);
+
+/* App */
+@Component({
+  selector: "app-root",
+  standalone: true,
+  imports: [CommonModule],
+  template: `
+    <ul>
+      <li *ngFor="let user of users()">{{ user.name }}</li>
+    </ul>
+  `,
+})
+export class AppComponent {
+  readonly users = useStore($users);
+
+  constructor() {
+    fetchUsers();
+  }
+}
+```
+
+**useStore** can take a store getter as its first argument. It also accepts an optional dependency array as its second argument. Use the getter and dependencies to control subscriptions.
+
+```ts
+useStore<State>(
+        $store: Store<State> | (() => Store<State>),
+        deps: Accessor<unknown>[] = [],
+) => Accessor<State>;
+```
+
+<br/>
+
 ## Additional info
 ### .val()
-Every call to an action or target returns a `val` method.
+Every call to an action or task returns a `val` method.
 
-- **Action call** `val()` returns an `Output` value or — if the chain contains async commands — a `Promise<Output>`.
-- **Target call** `val()` always returns a `Promise<Result>` since targets are always asynchronous.
+- **Action call** `val()` returns an `Output` value or, if the chain contains asynchronous commands, a `Promise<Output>`.
+- **Task call** `val()` always returns a `Promise<Result>` because tasks are always asynchronous.
 
 ```ts
 const action = chain<number>();
@@ -267,19 +422,17 @@ console.log(action(10).val());            //=> 20
 mapped(10).val().then(console.log);       //=> "20"
 ```
 
-It's useful if you need to get an output outside the store or do something when 
-the target resolves.
+Use `val()` to get an output outside the store or to run code when a task resolves.
 
 ```ts
-const getUsers = chain<number>().target(page => `/users/page?=${page}`);
+const getUsers = chain<number>().task(page => `/users/page?=${page}`);
 
 getUsers(1).val().then(() => {
   /** do your stuff */
 })
 ```
 
-Unlike emitted values, which can be filtered out or blocked by an error, `val()` 
-always returns either an `Output` or a `Promise<Output>`, or throws an error.
+Unlike emitted values, which can be filtered out or blocked by an error, `val()` always returns an `Output` or a `Promise<Output>`, or throws an error.
 
 ```ts
 const filter = chain<number>().filter(n => n !== 10);
@@ -295,8 +448,7 @@ try {
 
 ### Chain life cycle
 
-Every chain has a queue of commands. Every `.map` or `.filter` on a chain adds
-a command to this queue. The fewer commands an action has, the earlier it will be called.
+Every chain has a queue of commands. Each `.map` or `.filter` call adds a command to the queue. Actions with fewer commands run earlier.
 
 ```js
 const act1 = chain();                     /* 0 commands */
@@ -307,8 +459,7 @@ const act4 = act2.map()                   /* 3 commands */
 /* act1 -> act3 -> act2 -> act4 */
 ```
 
-A command emits output *before* passing it down the chain, meaning
-all watchers will be notified when the next command is called.
+A command emits its output *before* passing it down the chain. As a result, all watchers are notified before the next command runs.
 
 ```@ts
 const act1 = chain<number>();
@@ -317,10 +468,10 @@ const $store = store<number>(0).on(act1, (_, n) => n);
 const act2 = act1.map(() => $store.get());  /* returns act1 output value */
 ```
 
-Command calls are synchronous, except for targets. Targets start after 
-a promise delay (`Promise.resolve().then(...)`), which guarantees that they 
-run after all actions in the chain have executed. This does not apply to 
-asynchronous `.map` and `.filter` commands.
+Commands run synchronously, except for tasks. Tasks start after a promise delay (`Promise.resolve().then(...)`), so they run after all actions in the chain have executed. This does not apply to asynchronous `.map` and `.filter` commands.
+
+
+
 
 <br/>
 
@@ -332,52 +483,51 @@ asynchronous `.map` and `.filter` commands.
 
 **Unit**`<P, X = void>`
 - **watch**:`(fn: (params: P, ext: X) => void): Disposer`<br/>
-  Subscribes `fn` to the unit's emitter. Returns a `Disposer*`, a void function 
-  that disposes of the subscription.
+  Subscribes `fn` to the unit's emitter and returns a `Disposer*`: a function that removes the subscription.
 
 
 ---
 ### Action`<Input, Output>`<br/>
 - extends **Call**`<Input, Output>`<br/>
-  On call, returns `.val`, a void function that retrieves the `Output`.
+  When called, returns `.val`, a function that retrieves the `Output`.
 
 
 - extends **Unit**`<Output>`<br/>
-  Emits `Output` on completion.
+  Emits `Output` when the action completes.
 
 
 - **map**:`(fn: <T>(arg: Output) => T | Promise<T>): Action<Input, T>`<br/>
-  Creates a new action that converts `Output` to a new value, `T`.
+  Creates a new action that transforms `Output` into `T`.
 
 
 - **filter**:`(fn: (arg: Output) => boolean | Promise<boolean>): Action<Input, Output>`<br/>
-  Creates a new action that filters `Output`. Stops further execution and emission if the value is filtered out.
+  Creates a new action that filters `Output`. If the value is filtered out, execution and emission stop.
 
 
-- **target**:`(fn: <Result, Error>(arg: Output) => Promise<Result>): Target<Input, Output, Result, Error>`<br/>
-  Creates a `Target` with the provided asynchronous command.
+- **task**:`(fn: <Result, Error>(arg: Output) => Promise<Result>): Task<Input, Output, Result, Error>`<br/>
+  Creates a `Task` with the provided asynchronous command.
 
 ---
 
-### **Target**`<Input, Params, Result, Error>`<br/>
+### **Task**`<Input, Params, Result, Error>`<br/>
 - extends **Call**`<Input, Promise<Result>`<br/>
-  On call, returns `.val`, a void function that returns a `Promise<Result>`.
+  When called, returns `.val`, a function that returns a `Promise<Result>`.
 
 
 - extends **Unit**`<Params>`<br/>
-  Emits `Params` when the command is invoked.
+  Emits `Params` when the command is called.
 
 
 - **done**:`Unit<Result, Params>`<br/>
-  Unit emitting `Result` and `Params` when the target's promise resolves.
+  Emits `Result` and `Params` when the task's promise resolves.
 
 
 - **fail**:`Unit<Error, Params>`<br/>
-  Unit emitting `Error` and `Params` when the target's promise rejects.
+  Emits `Error` and `Params` when the task's promise rejects.
 
 
 - **end**: `Unit<Params>`<br/>
-  Unit emitting `Params` when the target's promise finishes.
+  Emits `Params` when the task's promise settles.
 
 ---
 
@@ -391,11 +541,11 @@ asynchronous `.map` and `.filter` commands.
 
 
 - **set**:`(next: State) => void`<br/>
-  Sets the new state.
+  Sets the store's state.
 
 
 - **on**:`<P, X = void>(unit: Unit<P, X>, fn: (state: State, params: P, ext: X) => State): Store<State>`<br/>
-  Subscribes the store to a unit's emitter. `fn` should return a new state value. Only one subscription per unit is allowed at a time.
+  Subscribes the store to a unit's emitter. `fn` must return the next state. Only one subscription per unit is allowed at a time.
 
 
 - **off**:`(unit: Unit): Store<State>`<br/>
@@ -403,6 +553,4 @@ asynchronous `.map` and `.filter` commands.
 
 
 - **map**: `(mapper: <M>(state: State) => M): ReadStore<M>`<br/>
-  Creates a new read-only store (without `.on`, `.off`, or `.set`) with a mapped value. It automatically updates from the parent store.<br/>
-
-
+  Creates a read-only store (without `.on`, `.off`, or `.set`) that holds the mapped value and updates automatically when the parent store changes.<br/>

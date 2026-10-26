@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { chain } from "../index";
+import { chain } from "../src";
 import { delay, filter, mapper } from "./utils";
 
 let res: string = "";
