@@ -6,10 +6,10 @@ import {
   type Ref,
   type WatchSource,
 } from "vue";
-import { ReadStore } from "../types";
+import { Store } from "../types";
 
 export function useStore<State>(
-  $store: ReadStore<State> | (() => ReadStore<State>),
+  $store: Store<State> | (() => Store<State>),
   deps: WatchSource<unknown>[] = [],
 ) {
   const state = shallowRef<State>(toValue($store).get()) as Ref<State>;
@@ -35,12 +35,13 @@ export function useStore<State>(
 
 export type {
   Action,
+  Task,
+  WriteStore,
+  ReadStore,
+  Store,
+  Unit,
   Command,
   Disposer,
-  Store,
-  ReadStore,
-  Unit,
-  Target,
 } from "../types";
 
 export * from "../index.js";

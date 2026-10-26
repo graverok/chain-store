@@ -14,7 +14,7 @@ export interface Action<Input = void, Output = Input>
     Unit<Output>,
     Commands<Input, Output> {}
 
-export interface Target<Input, Params = Input, Result = unknown, Err = Error>
+export interface Task<Input, Params = Input, Result = unknown, Err = Error>
   extends Call<Input, { val: () => Promise<Result> }>, Unit<Params> {
   done: Unit<Result, Params>;
   fail: Unit<Err, Params>;
@@ -26,11 +26,13 @@ export interface ReadStore<State> extends Unit<State> {
   map: <Part>(mapper: (state: State) => Part) => ReadStore<Part>;
 }
 
-export interface Store<State> extends ReadStore<State> {
+export interface WriteStore<State> extends ReadStore<State> {
   on: <U, P = void>(
     unit: Unit<U, P>,
     fn: (state: State, u: U, p: P) => State,
-  ) => Store<State>;
+  ) => WriteStore<State>;
   set: (state: State) => void;
-  off: (unit?: Unit) => Store<State>;
+  off: (unit?: Unit) => WriteStore<State>;
 }
+
+export type Store<State> = ReadStore<State> | WriteStore<State>;

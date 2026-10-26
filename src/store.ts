@@ -1,7 +1,7 @@
 import {
   Action,
-  Target,
-  Store,
+  Task,
+  WriteStore,
   Disposer,
   Unit,
   Command,
@@ -30,7 +30,7 @@ export const store = <State>(initialState: State) =>
 const createStore = <State, Parent extends unknown | void = void>(
   initialState: State,
   config?: [Unit<Parent>, (state: Parent) => State],
-): Parent extends void ? Store<State> : ReadStore<State> => {
+): Parent extends void ? WriteStore<State> : ReadStore<State> => {
   let disposers: [Unit, Disposer][] = [];
   const emitters = [[], []] as unknown as [Emitter, Emitter];
   const unit = { watch: subscriber(emitters[1]) } as Unit<State>;
@@ -81,7 +81,7 @@ const createStore = <State, Parent extends unknown | void = void>(
         }),
   };
   return store as unknown as Parent extends void
-    ? Store<State>
+    ? WriteStore<State>
     : ReadStore<State>;
 };
 
@@ -146,16 +146,16 @@ const createAction = <Input = void, Output = Input>(
   ) as Action<Input, Output>;
 };
 
-const createTarget = <Input, Result, Params = Input, Err = Error>(
+const createTask = <Input, Result, Params = Input, Err = Error>(
   start: Carrier<Input>,
   propagate: (fn: Carrier<Params>) => void,
-  target: (params: Params) => Result | Promise<Result>,
+  task: (params: Params) => Result | Promise<Result>,
 ) => {
   const emitter = [[], [], [], []] as unknown as Emitter[];
   const pending: Promise<Result>[] = [];
 
   const exec = async (params: Params, match: Match<Result> | void) => {
-    const promise = target(params);
+    const promise = task(params);
 
     if (!(promise instanceof Promise)) {
       emitter[0][1]?.(params);
@@ -207,7 +207,7 @@ const createTarget = <Input, Result, Params = Input, Err = Error>(
     done: createMethods(emitter[1]),
     fail: createMethods(emitter[2]),
     end: createMethods(emitter[3]),
-  }) as Target<Input, Params, Result, Err>;
+  }) as Task<Input, Params, Result, Err>;
 };
 
 const createMethods = <Input, Output = Input>(
@@ -218,18 +218,18 @@ const createMethods = <Input, Output = Input>(
   if (!start || !next) return { watch: subscriber(emitter) };
   return {
     watch: subscriber(emitter),
-    map: <Mapped>(map: Command<Output, Mapped>): Action<Input, Mapped> =>
-      createAction(start, pusher(next), map as Command<Output, Mapped>),
-    filter: (filter: Command<Output, boolean>): Action<Input, Output> =>
+    map: <Mapped>(cmd: Command<Output, Mapped>): Action<Input, Mapped> =>
+      createAction(start, pusher(next), cmd as Command<Output, Mapped>),
+    filter: (cmd: Command<Output, boolean>): Action<Input, Output> =>
       createAction(
         start,
         pusher(next),
         void 0,
-        filter as Command<Output, boolean>,
+        cmd as Command<Output, boolean>,
       ),
-    target: <Result, Err>(
-      target: Command<Output, Result>,
-    ): Target<Input, Output, Result, Err> =>
-      createTarget(start, pusher(next), target as Command<Output, Result>),
+    task: <Result, Err>(
+      cmd: Command<Output, Result>,
+    ): Task<Input, Output, Result, Err> =>
+      createTask(start, pusher(next), cmd as Command<Output, Result>),
   };
 };

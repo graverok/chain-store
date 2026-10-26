@@ -1,4 +1,4 @@
-import { Action, Target, Command, Disposer } from "./types";
+import { Action, Task, Command, Disposer } from "./types";
 
 export type Match<R = any> = (
   carrier?: Carrier,
@@ -29,9 +29,9 @@ export type Commands<Input, Output> = {
       ? Promise<Awaited<ReturnType<Fn>>>
       : ReturnType<Fn>
   >;
-  target: <Result, Err = Error>(
+  task: <Result, Err = Error>(
     fn: Command<Output, Result>,
-  ) => Target<Input, Output, Result, Err>;
+  ) => Task<Input, Output, Result, Err>;
 };
 
 export type Emitter = [

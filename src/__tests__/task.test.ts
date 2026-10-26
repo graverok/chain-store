@@ -7,13 +7,13 @@ const handler = (p: string) => (r: any) => {
   res = (res + ` ${p}-${JSON.stringify(r)}`).trim();
 };
 
-test("target", async () => {
+test("task", async () => {
   const fn1 = chain<number>();
   const fn3 = fn1.map((n) => new Promise((resolve) => resolve(n - 10)));
-  const act1 = fn1.target((n) => [n]);
+  const act1 = fn1.task((n) => [n]);
   const fn2 = fn1.map((n) => n * 2);
-  const act2 = fn2.target(mapper(1.2));
-  const act3 = fn1.filter(filter(20)).target(mapper(3.5));
+  const act2 = fn2.task(mapper(1.2));
+  const act3 = fn1.filter(filter(20)).task(mapper(3.5));
 
   fn1.watch(handler("f1"));
   act1.watch(handler("a1"));
@@ -32,7 +32,7 @@ test("target", async () => {
   await delay();
   expect(res).toBe("f1-10 f2-20 f3-0 a1-10 a2-20"); // first async calls
   await delay();
-  expect(res).toBe("f1-10 f2-20 f3-0 a1-10 a2-20 a1d-[10]"); // target's watch resolve
+  expect(res).toBe("f1-10 f2-20 f3-0 a1-10 a2-20 a1d-[10]"); // task's watch resolve
   await delay(200);
   expect(res).toBe("f1-10 f2-20 f3-0 a1-10 a2-20 a1d-[10] a3-10 a2d-24");
   await delay(200);
@@ -47,7 +47,7 @@ test("target", async () => {
   res = "";
 });
 
-test("simultaneous target calls", async () => {
+test("simultaneous task calls", async () => {
   const pending: Record<number, Promise<number> | void> = {};
   const stored: Record<number, Promise<number> | void> = {};
 
@@ -73,8 +73,8 @@ test("simultaneous target calls", async () => {
   };
 
   const fn1 = chain<number>();
-  const act1 = fn1.target(pender(2));
-  const act2 = fn1.target(storer(3));
+  const act1 = fn1.task(pender(2));
+  const act2 = fn1.task(storer(3));
 
   act1.watch(handler("a1"));
   act1.done.watch(handler("a1d"));
@@ -114,8 +114,8 @@ const error = (x: number) => (n: number) => {
   });
 };
 
-test("target errors", async () => {
-  const act1 = chain<number>().target(error(10));
+test("task errors", async () => {
+  const act1 = chain<number>().task(error(10));
 
   act1.watch(handler("a1"));
   act1.done.watch(handler("a1d"));
@@ -143,8 +143,8 @@ test("target errors", async () => {
   res = "";
 });
 
-test("target val", async () => {
-  const act1 = chain<number>().target(error(10));
+test("task val", async () => {
+  const act1 = chain<number>().task(error(10));
 
   act1(20).val().then(handler("pa1"));
   act1(10).val().catch(handler("ea1"));
@@ -164,7 +164,7 @@ test("target val", async () => {
 
   const act2 = chain<number>()
     .filter((n) => n > 0)
-    .target(error(20));
+    .task(error(20));
 
   act2(30).val().then(handler("a1"));
   await delay();

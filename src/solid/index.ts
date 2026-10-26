@@ -5,13 +5,13 @@ import {
   onCleanup,
   type Accessor,
 } from "solid-js";
-import type { ReadStore } from "../types";
+import type { Store } from "../types";
 
-const getter = <State>($store: ReadStore<State> | (() => ReadStore<State>)) =>
+const getter = <State>($store: Store<State> | (() => Store<State>)) =>
   typeof $store === "function" ? $store() : $store;
 
 export function useStore<State>(
-  $store: ReadStore<State> | (() => ReadStore<State>),
+  $store: Store<State> | (() => Store<State>),
   deps: Accessor<unknown>[] = [],
 ): Accessor<State> {
   const [state, setState] = createSignal<State>(getter($store).get());
@@ -33,12 +33,13 @@ export function useStore<State>(
 
 export type {
   Action,
+  Task,
+  WriteStore,
+  ReadStore,
+  Store,
+  Unit,
   Command,
   Disposer,
-  Store,
-  ReadStore,
-  Unit,
-  Target,
 } from "../types";
 
 export * from "../index.js";

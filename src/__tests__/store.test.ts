@@ -9,7 +9,7 @@ const handler = (p: string) => (r: any) => {
 
 test("store", async () => {
   const fn1 = chain<number>();
-  const act1 = fn1.target(mapper(2));
+  const act1 = fn1.task(mapper(2));
   const $store = store(0);
 
   $store.on(fn1, (state, n) => state + n).on(act1.done, (_, result) => result);

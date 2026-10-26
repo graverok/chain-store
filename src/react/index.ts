@@ -1,8 +1,8 @@
 import { useState, useEffect, DependencyList } from "react";
-import { ReadStore } from "../types";
+import { Store } from "../types";
 
 export const useStore = <State>(
-  $store: ReadStore<State>,
+  $store: Store<State>,
   deps: DependencyList = [$store],
 ) => {
   const [state, setState] = useState<State>($store.get());
@@ -17,12 +17,13 @@ export const useStore = <State>(
 
 export type {
   Action,
+  Task,
+  WriteStore,
+  ReadStore,
+  Store,
+  Unit,
   Command,
   Disposer,
-  Store,
-  ReadStore,
-  Unit,
-  Target,
 } from "../types";
 
 export * from "../index.js";
