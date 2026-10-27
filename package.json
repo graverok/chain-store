@@ -48,7 +48,7 @@
   },
   "scripts": {
     "build": "node scripts/clean-dist.mjs && tsc --noEmit && vitest --run && vite build && node scripts/prepare-dist.mjs",
-    "size": "yarn build && brotli ./dist/index.cjs && brotli ./dist/react/index.cjs && brotli ./dist/preact/index.cjs && brotli ./dist/vue/index.cjs && brotli ./dist/solid/index.cjs",
+    "size": "yarn build && brotli ./dist/index.cjs",
     "test": "vitest"
   }
 }

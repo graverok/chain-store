@@ -7,82 +7,82 @@
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
-- Built-in tree-shaking support for **React/Preact**, **Vue**, **Angular**, **Solid**.
-- Small: **2.23 kB** minified, **1.04 kB** gzipped. Zero dependencies.
+- Built-in tree-shaking support for **React/Preact**, **Solid**, **Vue**, **Svelte**, **Angular**.
+- Small: **2.26 kB** minified, **1.06 kB** gzipped. Zero dependencies.
 
 ```ts
 // store.ts
-import { chain, store, type Action, type Target } from "chain-store";
+import { chain, store, type Action, type Task, type Store } from "chain-store";
 
-/** Converts a direction into an increment for the current page. */
-const changePage: Action<boolean, number> = chain<boolean>()
-  .map((forward: boolean) => (forward ? 1 : -1));
-
-/** Stores the current page number. */
-const $page = store<number>(1)
-  .on(changePage, (page: number, inc: number) => page + inc);
-
-/** Fetches users for the current page. */
 type User = { id: number; name: string };
+type UserStore = { page: number, users: User[] };
 
-const fetchUsers: Target<void, number, User[]> = chain()
-  .map(() => $page.get())
-  .target((page: number) =>
-    fetch(`/users?page=${page}`).then((res) => res.json() as Promise<User[]>)
+/** Create store of users */
+const $users: Store<UserStore> = store<UserStore>({
+  page: 1,
+  users: Record<number, User[]>,
+});
+
+/** Create chained task with filter and mapper to get page number */
+const changePage = chain<number | void>()
+  .map((inc: number) => $users.get().page + (inc ?? 0))
+  .filter((page: number) => page >= 1)
+  .task((page: number) => fetch(`/users/?page=${page}`)
+    .then(response => response.json() as User[])
   );
 
-/** Automatically fetches users when the page changes. */
-$page.watch(() => fetchUsers());
-
-/** Stores users by page number. */
-type UserState = Record<number, User[]>;
-
-const $users = store<UserState>({})
-  .on(
-    fetchUsers.done,
-    (state: UserState, result: User[], params: number) => ({
+/** Subscribe store to task emissions */
+$users
+  .on(changePage, (state: UserStore, page: number) => {
+    return { ...state, page}
+  })
+  .on(changePage.done, (state: UserStore, users: User[], page: number) => {
+    return {
       ...state,
-      [params]: result,
-    })
-  );
+      users: {...state.users, [page]: users }
+    }
+  })
 
-export { $users, changePage, fetchUsers };
+export { $users, changePage };
 ```
 
-```ts
-// app.ts
-import { chain } from "chain-store";
-import { changePage, fetchUsers } from "./store";
+```tsx
+// app.tsx
+import { useStore } from "chain-store/react";
+import { useCallback, useEffect, useState } from "react";
+import { $users, changePage } from "./store";
 
-/** Creates an action to add a user. */
-const addUser = chain<void, string>()
-  .map(() => prompt("Enter the user's name"))
-  .filter((name: string | null) => Boolean(name))
-  .target((name) =>
-    fetch(`/adduser?name=${name as string}`, { method: "PUT" })
-  );
+export const App = () => {
+  const page = useStore($users.map(state => state.page), []);
+  const users = useStore($users.map(state => state.users[page] ?? []), [ page ]);
 
-/** Refreshes the current page after a user is added. */
-addUser.done.watch(() => fetchUsers());
+  const [ loading, setLoading ] = useState(false);
 
-const buttonAddUser = document.querySelector<HTMLButtonElement>("#submit");
+  const fetchWithLoading = useCallback((inc?: number) => {
+    setLoading(true);
+    changePage(inc).val().finally(() => setLoading(false));
+  }, []);
 
-if (buttonAddUser) {
-  buttonAddUser.addEventListener("click", () => {
-    buttonAddUser.setAttribute("disabled", "true");
-    addUser()
-      .val()
-      .finally(() => buttonAddUser.removeAttribute("disabled"));
-  });
-}
+  useEffect(() => {
+    fetchWithLoading();
+  }, [ fetchWithLoading ]);
 
-document
-  .querySelector("#next-page")
-  ?.addEventListener("click", () => changePage(true));
+  return <>
+    { isLoading ? (
+      <span>Loading...</span>
+    ) : (
+      <ul>
+        { users.map(user => <li key={ user.id }>
+          { user.name }
+        </li>) }
+      </ul>
+    )}
+    
+    <button onClick={ () => fetchWithLoading(-1) }>Previous</button>
+    Page: #<strong>{ page }</strong>
+    <button onClick={ () => fetchWithLoading(1) }>Next</button>
+  </>
 
-document
-  .querySelector("#prev-page")
-  ?.addEventListener("click", () => changePage(false));
 ```
 
 [More information](https://github.com/graverok/chain-store)

@@ -6,9 +6,7 @@ export const useStore = <State>(
   deps: readonly any[] = [$store],
 ) => {
   const [state, setState] = useState<State>($store.get());
-
-  useEffect(() => $store.watch((state) => setState(() => state)), deps);
-
+  useEffect(() => $store.subscribe((state) => setState(() => state)), deps);
   return state;
 };
 

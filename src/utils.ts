@@ -77,15 +77,15 @@ export type Emitter = [((watcher: Watcher) => Disposer) | void, Watcher | void];
 
 export const subscriber =
   (emitter: Emitter) =>
-  (callback: (...args: any[]) => void): Disposer => {
+  (callback: Watcher): Disposer => {
     if (emitter[0]) return emitter[0](callback);
 
-    const subscribers: ((...args: any[]) => void)[] = [];
+    const subscribers: Watcher[] = [];
 
-    const subscribe = (watcher: (...args: any[]) => void) =>
+    const subscribe = (watcher: Watcher) =>
       !subscribers.includes(watcher) && subscribers.push(watcher);
 
-    emitter[0] = (watcher: (...args: any[]) => void) => {
+    emitter[0] = (watcher: Watcher) => {
       subscribe(watcher);
       return () => {
         splicer(subscribers, watcher);

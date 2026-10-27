@@ -52,7 +52,8 @@ const createStore = <State, Parent extends unknown | void = void>(
 
   const store = {
     get: () => state,
-    watch: (watcher: Watcher) => {
+    watch: subscriber(emitters[0]),
+    subscribe: (watcher: Watcher) => {
       watcher(state);
       return subscriber(emitters[0])(watcher);
     },

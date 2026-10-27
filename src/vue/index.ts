@@ -20,7 +20,7 @@ export function useStore<State>(
       const store = toValue($store);
 
       onCleanup(
-        store.watch((value: State) => {
+        store.subscribe((value: State) => {
           state.value = value;
         }),
       );

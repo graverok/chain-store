@@ -15,7 +15,6 @@ test("store", async () => {
   $store.on(fn1, (state, n) => state + n).on(act1.done, (_, result) => result);
 
   $store.watch(handler("s"));
-  res = "";
 
   fn1(0);
   expect(res).toBe("");
@@ -54,7 +53,7 @@ test("store unwatch", async () => {
 
   $store.on(fn1, (state) => state + 1);
 
-  const unwatch = $store.watch((s) => {
+  const unwatch = $store.subscribe((s) => {
     handler("s")(s);
     if (s === 2) unwatch();
   });
@@ -87,7 +86,6 @@ test("store off()", () => {
     .on(fn2, (state, s) => ({ ...state, s }));
 
   $store.watch(({ n, s }) => handler("s")(`${n}:${s}`));
-  res = "";
 
   fn1(5);
   fn2("test");
@@ -128,7 +126,6 @@ test("store mutability", async () => {
   const $user = $store.map((state) => state.user);
   $user.watch(() => handler("user")("change"));
   $user.map((state) => state.name).watch(() => handler("name")("change"));
-  res = "";
 
   user({ name: "test" });
   expect(res).toBe(`user-change name-change`);

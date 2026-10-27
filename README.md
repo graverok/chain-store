@@ -7,8 +7,8 @@
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
-- Built-in tree-shaking support for **React/Preact**, **Vue**, **Angular**, **Solid**.
-- Small: **2.23 kB** minified, **1.04 kB** gzipped. Zero dependencies.
+- Built-in tree-shaking support for **React/Preact**, **Solid**, **Vue**, **Svelte**, **Angular**.
+- Small: **2.26 kB** minified, **1.06 kB** gzipped. Zero dependencies.
 
 ### Installation
 
@@ -22,7 +22,7 @@ npm install chain-store
 - [**Action**](#action)<br/>
 - [**Task**](#task)<br/>
 - [**Store**](#store):  [Partial store](#partial-store)  •  [Optional mutability](#optional-mutability)<br/>
-- **Integration**:  [React/Preact](#react-preact)  •  [Vue](#vue)  •  [Solid](#solid)  •  [Angular](#angular)<br/>
+- **Integration**:  [React/Preact](#react-preact)  •  [Vue](#vue)  •  [Solid](#solid)  •  [Svelte](#svelte)  •  [Angular](#angular)<br/>
 - **Additional info**:  [.val()](#val)  •  [Chain life cycle](#chain-life-cycle)<br/>
 - [**Types summary**](#types-summary)<br/>
 
@@ -37,23 +37,31 @@ An **action** takes an `Input` and emits an `Output` through a chain of commands
 - **`.task`** returns a [Task](#tasks): an asynchronous action designed for business logic.
 
 ```ts
-import { chain, type Action } from "chain-store";
+import { chain, type Action, type Task } from "chain-store";
+
+const PAGE_SIZE = 20;
 
 /** Create an action */
 const testAction: Action<number, string> = chain<number>()
-  .filter((n: number) => n > 0)
-  .map((n: number) => n.toString())
-  .filter((s: string) => s.length > 2);
+  .filter((page: number) => page >= 1)
+  .map((page: number) => page.toString())
+```
 
-/** Watch emitted outputs */
-const unwatch = testAction.watch(console.log);
+Subscribe to Action emitted outputs with `.watch` method.
+It takes callback `(value: Output) => void` and returns `Disposer`, a void
+function to cancel subscription.
+
+
+```ts
+/** Subscribe to action emitted outputs */
+const dispose = testAction.watch(console.log);
 
 /** Call the action */
-testAction(1000);                         //=> "1000"
-testAction(-1000);                        /* Filtered out: (n > 0) */
-
+testAction(1);                            //=> "1"
+testAction(0);                            /* no output, 
+                                             negative value is filtered out */
 /** Stop watching */
-unwatch();
+dispose();
 ```
 
 <br/>You can split a chain into separate actions as needed. Calling any action in the chain causes the other actions to emit their respective outputs.
@@ -61,18 +69,19 @@ unwatch();
 ```ts
 import { chain, type Action } from "chain-store";
 
-const setNumber: Action<number, number> = chain<number>();
-const positiveOnly: Action<number, number> = setNumber.filter(n => n > 0);
-const asString: Action<number, string> = positiveOnly.map(n => n.toString());
+const number: Action<number, number> = chain<number>();
+const double: Action<number, number> = number.map(n => n * 2);
+const string: Action<number, string> = number.map(n => n.toString());
 
-setNumber.watch(console.log);
-asString.watch(console.log);
+double.watch((value) => console.log("double", value));
+string.watch((value) => console.log("string", value));
 
-asString(42);                             //=> 42
-                                          //=> "42"
+number(42);                               //=> "double", 84
+                                          //=> "string", "42"
 
 /** It doesn't matter which action in the chain you call */
-positiveOnly(-1);                         //=> -1
+double(-1);                               //=> "double", -2
+                                          //=> "string", "-2"
 ```
 
 <br/>Commands can also be asynchronous. A `Promise` is resolved before its value is passed down the chain. Any rejection or error stops further execution.
@@ -133,16 +142,25 @@ import { store } from "chain-store";
 type State = { data: string };
 const $store = store<State>({ data: "init" });
 
-$store.watch((state: State) => console.log(state.data));
+$store.watch((state: State) => {
+  console.log(state.data)                 
+});
 
 $store.set({ data: "test1" });            //=> "test1"
-
-const state = $store.get();
-$store.set({ ...state, data: "test2" });  //=> "test2"
-
 ```
 
-<br/>A store can be updated by actions, tasks, or other stores:
+<br/>A store also have `.subscription` method differs from `.watch` only by immediate
+invoking subscription callback with current state value.
+
+```ts
+const dispose = $store.subscribe((state: State) => {
+  console.log(state.data)                //=> "init"
+});
+
+dispose();
+```
+
+<br/>A store can be updated by actions, tasks, or other stores with `.on`/`.off` methods.
 
 ```ts
 type Data = { name: string };
@@ -170,7 +188,7 @@ $data
   .on(task.done, (_, result: Data) => result);
 
 $state.watch(state => {
-  console.log(state.data.name);
+  console.log(state.data.name);           
 });
 
 $data.set({ name: "store" });             //=> "store"
@@ -187,7 +205,7 @@ $data.off(); /* Removes all subscriptions */
 
 ### Partial store
 
-Use `.map` on a store to read and watch only part of its state. Partial stores are read-only and cannot be updated directly.
+Use `.map` on a store to get part of its state. Partial stores are read-only (no `.set`/`.on`/`.off` methods) and cannot be updated directly.
 
 ```ts
 const $store = store({ data: { name: "part" } });
@@ -205,9 +223,9 @@ $store.set({ data: $partial.get() });     /* No output: the partial state hasn't
 
 ---
 
-### Optional mutability
+### Optional impurity
 
-Stores let you mutate state while notifying watchers only when the watched value changes. Changes are detected using strict equality (`===`).
+Stores let you mutate state within updaters while notifying watchers only when the watched value changes. Changes are detected using strict equality (`===`).
 
 ```ts
 import { chain, store } from "chain-store";
@@ -220,11 +238,11 @@ const setName = chain<string>();
 const $store = store<Data>({ name: "chain" });
 
 $store
-        .on(setUser, (_, data: Data) => data)
-        .on(setName, (state: Data, name: string) => {
-          state.name = name; /* Mutate the state */
-          return state;      /* A return value is still required */
-        });
+  .on(setUser, (_, data: Data) => data)
+  .on(setName, (state: Data, name: string) => {
+    state.name = name; /* Mutate the state */
+    return state;      /* A return value is still required */
+  });
 
 $store.watch(data => console.log("data changed"));
 $store.map(user => user.name).watch(() => console.log("name changed"));
@@ -250,34 +268,37 @@ setUser($store.get());                    /* No output: nothing changed */
 ```tsx
 /* Re-exports core functions and types */
 import { chain, store, useStore, type Store } from "chain-store/react";
-/* for Preact: "chain-store/preact"; */
-import { useEffect } from "react";
+                                    /* for Preact: "chain-store/preact"; */
 
 /* Store */
-const fetchUsers = chain().task(() => fetch("/users").then(result => result.json()));
-const $users: Store<User[]> = store<User[]>([])
-        .on(fetchUsers.done, (_, result: User[]) => result);
+const $counter: Store<number> = store(0);
+
+const change = chain<"plus" | "minus">()
+  .map(val => val === "plus" ? 1 : -1)
+  .filter((shift: number) => $counter.get() + shift >= 0);
+
+$counter.on(change, (state, shift: number) => {
+  return state + shift;
+});
 
 /* App */
 const App = () => {
-  const users: User[] = useStore($users);
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  return <ul>
-    { users.map((user) => <li key={ user.id }>{ user.name }</li>) }
-  </ul>;
+  const count = useStore($counter);
+  
+  return <>
+    <button onClick={() => change("minus")}>Decrement</button>
+    <strong>Counter: {count}</strong>
+    <button onClick={() => change("plus")}>Increment</button>
+  </>;
 };
 ```
 
 **useStore** has an optional second argument: a dependency array. Use it with mapped stores to control subscriptions.
 ```ts
 useStore<State>(
-        $store: Store<State>,
-        deps: DependencyList = [$store]
-) => State;
+  $store: Store<State>,
+  deps: DependencyList = [$store]
+): State;
 ```
 
 ---
@@ -288,24 +309,28 @@ useStore<State>(
 ```vue
 <script lang="ts">
   /* Re-exports core functions and types */
-  import { chain, store, useStore, type Store } from "chain-store/vue";
+  import { chain, store, type Store } from "chain-store/vue";
 
-  const fetchUsers = chain().task(() => fetch("/users").then(result => result.json()));
-  const $users: Store<User[]> = store<User[]>([])
-          .on(fetchUsers.done, (_, result: User[]) => result);
+  /* Store */
+  const $counter: Store<number> = store(0);
+
+  const change = chain<"plus" | "minus">()
+    .map(val => val === "plus" ? 1 : -1)
+    .filter((shift: number) => $counter.get() + shift >= 0);
+
+  $counter.on(change, (state, shift: number) => {
+    return state + shift;
+  });
 </script>
 
 <script setup lang="ts">
-  fetchUsers();
-  const users = useStore($users);
+  const count = useStore($counter);
 </script>
 
 <template>
-  <ul>
-    <li v-for="user in users">
-      {{ user.name }}
-    </li>
-  </ul>
+  <button :click="() => change('minus')">Decrement</button>
+  <strong>Counter: {{ count }}</strong>
+  <button :click="() => change('plus')">Increment</button>
 </template>
 ```
 
@@ -313,9 +338,9 @@ useStore<State>(
 
 ```ts
 useStore<State>(
-        $store: Store<State> | (() => Store<State>),
-        deps: WatchSource<unknown>[] = [],
-) => readonly Ref<State>;
+  $store: Store<State> | (() => Store<State>),
+  deps: WatchSource<unknown>[] = [],
+): readonly Ref<State>;
 ```
 
 ---
@@ -328,19 +353,25 @@ useStore<State>(
 import { chain, store, useStore, type Store } from "chain-store/solid";
 
 /* Store */
-const fetchUsers = chain().task(() => fetch("/users").then(result => result.json()));
-const $users: Store<User[]> = store<User[]>([])
-        .on(fetchUsers.done, (_, result: User[]) => result);
+const $counter: Store<number> = store(0);
+
+const change = chain<"plus" | "minus">()
+  .map(val => val === "plus" ? 1 : -1)
+  .filter((shift: number) => $counter.get() + shift >= 0);
+
+$counter.on(change, (state, shift: number) => {
+  return state + shift;
+});
 
 /* App */
 const App = () => {
-  const users = useStore($users);
+  const count = useStore($counter);
 
-  fetchUsers();
-
-  return <ul>
-    { users().map((user) => <li key={ user.id }>{ user.name }</li>) }
-  </ul>;
+  return <>
+    <button onClick={() => change("minus")}>Decrement</button>
+    <strong>Counter: {count()}</strong>
+    <button onClick={() => change("plus")}>Increment</button>
+  </>;
 };
 ```
 
@@ -348,61 +379,60 @@ const App = () => {
 
 ```ts
 useStore<State>(
-        $store: Store<State> | (() => Store<State>),
-        deps: Accessor<unknown>[] = [],
-) => Accessor<State>;
+  $store: Store<State> | (() => Store<State>),
+  deps: Accessor<unknown>[] = [],
+): Accessor<State>;
 ```
 
 ---
+<span id="svelte"/>
+
+### Svelte<small><sup> `v4+`</sup></small>
+
+Svelte works out of the box because `store` implements its contract.
+
+```svelte
+<script lang="ts">
+  import { store, chain } from "chain-store";
+  
+  const counter = store(0);
+  const change = chain<"plus" | "minus">()
+    .map(val => val === "plus" ? 1 : -1)
+    .filter((shift: number) => counter.get() + shift >= 0);
+  counter.on(change, (state, shift: number) => state + shift);
+</script>
+
+<button onclick={() => change("plus")}>Increment</button>
+<strong>Counter: {$counter}</strong>
+<button onclick={() => change("minus")}>Decrement</button>
+```
+---
+
 <span id="angular"/>
 
-### Angular<small><sup> `v16.x+`</sup></small>
+### Angular<small><sup> `v16+`</sup></small>
 
 ```ts
 /* Re-exports core functions and types */
-import { chain, store, useStore, type Store } from "chain-store/angular";
+import { chain, store, useStore, type Store, type Action } from "chain-store/angular";
 import { Component } from "@angular/core";
 import { CommonModule } from "@angular/common";
 
 /* Store */
-interface User {
-  id: number;
-  name: string;
-}
-
-const fetchUsers = chain().task(() =>
-        fetch("/users").then(result => result.json() as Promise<User[]>)
-);
-const $users: Store<User[]> = store<User[]>([])
-        .on(fetchUsers.done, (_, result: User[]) => result);
-
-/* App */
-@Component({
-  selector: "app-root",
-  standalone: true,
-  imports: [CommonModule],
-  template: `
-    <ul>
-      <li *ngFor="let user of users()">{{ user.name }}</li>
-    </ul>
-  `,
-})
-export class AppComponent {
-  readonly users = useStore($users);
-
-  constructor() {
-    fetchUsers();
-  }
-}
+const $counter: Store<number> = store(0);
+const change: Action<"plus" | "minus", number> = chain<"plus" | "minus">()
+  .map(val => val === "plus" ? 1 : -1)
+  .filter((shift: number) => $counter.get() + shift >= 0);
+$counter.on(change, (state, shift: number) => state + shift);
 ```
 
 **useStore** can take a store getter as its first argument. It also accepts an optional dependency array as its second argument. Use the getter and dependencies to control subscriptions.
 
 ```ts
 useStore<State>(
-        $store: Store<State> | (() => Store<State>),
-        deps: Accessor<unknown>[] = [],
-) => Accessor<State>;
+  $store: Store<State> | (() => Store<State>),
+  deps: Signal<unknown>[] = [],
+): Signal<State>;
 ```
 
 <br/>

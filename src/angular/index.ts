@@ -15,7 +15,7 @@ export function useStore<State>(
       for (const dep of deps) dep();
 
       const store = getter($store);
-      onCleanup(store.watch(state.set));
+      onCleanup(store.subscribe(state.set));
     },
     { allowSignalWrites: true },
   );
