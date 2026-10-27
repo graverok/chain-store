@@ -15,11 +15,12 @@ import {
   subscriber,
   awaiter,
   pusher,
-  Carrier,
-  Emitter,
-  Match,
-  Queue,
   evaluate,
+  type Carrier,
+  type Emitter,
+  type Match,
+  type Queue,
+  type Watcher,
 } from "./utils";
 
 export const chain = <Input = void>() => createAction<Input>();
@@ -51,7 +52,10 @@ const createStore = <State, Parent extends unknown | void = void>(
 
   const store = {
     get: () => state,
-    watch: subscriber(emitters[0]),
+    watch: (watcher: Watcher) => {
+      watcher(state);
+      return subscriber(emitters[0])(watcher);
+    },
     map: <PartState>(mapper: (state: State) => PartState) =>
       createStore<PartState, State>(mapper(state), [unit, mapper]),
     ...(config

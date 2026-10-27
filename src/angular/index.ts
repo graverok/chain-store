@@ -16,7 +16,6 @@ export function useStore<State>(
 
       const store = getter($store);
       onCleanup(store.watch(state.set));
-      state.set(store.get());
     },
     { allowSignalWrites: true },
   );

@@ -24,8 +24,6 @@ export function useStore<State>(
           state.value = value;
         }),
       );
-
-      state.value = store.get();
     },
     { immediate: true },
   );

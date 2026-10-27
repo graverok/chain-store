@@ -15,6 +15,7 @@ test("store", async () => {
   $store.on(fn1, (state, n) => state + n).on(act1.done, (_, result) => result);
 
   $store.watch(handler("s"));
+  res = "";
 
   fn1(0);
   expect(res).toBe("");
@@ -58,22 +59,23 @@ test("store unwatch", async () => {
     if (s === 2) unwatch();
   });
   fn1();
-  expect(res).toBe("s-1");
+  expect(res).toBe("s-0 s-1");
   fn1();
-  expect(res).toBe("s-1 s-2");
+  expect(res).toBe("s-0 s-1 s-2");
   fn1();
-  expect(res).toBe("s-1 s-2");
+  expect(res).toBe("s-0 s-1 s-2");
 
   $store.watch((s) => {
     handler("s")(s);
     if (s === 2) unwatch();
   });
+  res = "";
   fn1();
-  expect(res).toBe("s-1 s-2 s-4");
+  expect(res).toBe("s-4");
 
   $store.off(fn1);
   fn1();
-  expect(res).toBe("s-1 s-2 s-4");
+  expect(res).toBe("s-4");
   res = "";
 });
 
@@ -85,6 +87,7 @@ test("store off()", () => {
     .on(fn2, (state, s) => ({ ...state, s }));
 
   $store.watch(({ n, s }) => handler("s")(`${n}:${s}`));
+  res = "";
 
   fn1(5);
   fn2("test");
@@ -125,6 +128,7 @@ test("store mutability", async () => {
   const $user = $store.map((state) => state.user);
   $user.watch(() => handler("user")("change"));
   $user.map((state) => state.name).watch(() => handler("name")("change"));
+  res = "";
 
   user({ name: "test" });
   expect(res).toBe(`user-change name-change`);
@@ -180,4 +184,38 @@ test("store subscription", async () => {
   name("john");
   expect($name.get()).toEqual("john");
   expect($user.get()).toEqual({ name: "john" });
+  res = "";
 });
+
+// test("store types", async () => {
+//   const $fn = store(() => handler("s1")("run"));
+//   const $fnm = $fn.map((s) => s);
+//   $fnm.get()();
+//
+//   expect(typeof $fnm.get()).toBe("function");
+//   expect(res).toBe("s1-run");
+//   res = "";
+//
+//   const $num = store(10);
+//   const $numm = $num.map((s) => s);
+//   expect(typeof $numm.get()).toBe("number");
+//
+//   const $arr = store([10]);
+//   const $arrm = $arr.map((s) => s);
+//   expect(Array.isArray($arrm.get())).toBe(true);
+//
+//   const $date = store(new Date());
+//   const $datem = $date.map((s) => s);
+//   expect($datem.get() instanceof Date).toBe(true);
+//   expect(typeof $datem.get()).toBe("object");
+//
+//   const $void = store(undefined);
+//   const $voidm = $void.map((s) => s);
+//   expect($voidm.get()).toBe(undefined);
+//   expect(typeof $voidm.get()).toBe("undefined");
+//
+//   const $null = store(null);
+//   const $nullm = $null.map((s) => s);
+//   expect($nullm.get()).toBe(null);
+//   expect(typeof $nullm.get()).toBe("object");
+// });

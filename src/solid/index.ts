@@ -22,7 +22,6 @@ export function useStore<State>(
       () => {
         const store = getter($store);
         onCleanup(store.watch((state) => setState(() => state)));
-        setState(() => store.get());
       },
       { defer: false },
     ),

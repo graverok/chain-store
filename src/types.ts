@@ -23,7 +23,7 @@ export interface Task<Input, Params = Input, Result = unknown, Err = Error>
 
 export interface ReadStore<State> extends Unit<State> {
   get: () => State;
-  map: <Part>(mapper: (state: State) => Part) => ReadStore<Part>;
+  map: <Selected>(mapper: (state: State) => Selected) => ReadStore<Selected>;
 }
 
 export interface WriteStore<State> extends ReadStore<State> {

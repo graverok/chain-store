@@ -34,11 +34,6 @@ export type Commands<Input, Output> = {
   ) => Task<Input, Output, Result, Err>;
 };
 
-export type Emitter = [
-  ((watcher: (...args: any[]) => void) => Disposer) | void,
-  ((...args: any[]) => void) | void,
-];
-
 export const caller =
   <P>(...args: Parameters<Carrier<P>>) =>
   (next: Carrier<P>[]) => {
@@ -76,6 +71,9 @@ export const awaiter = (fn: VoidFunction) =>
   Promise.resolve()
     .then(fn)
     .catch(() => {});
+
+export type Watcher = (...args: any[]) => void;
+export type Emitter = [((watcher: Watcher) => Disposer) | void, Watcher | void];
 
 export const subscriber =
   (emitter: Emitter) =>

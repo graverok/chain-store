@@ -7,10 +7,7 @@ export const useStore = <State>(
 ) => {
   const [state, setState] = useState<State>($store.get());
 
-  useEffect(() => {
-    setState(() => $store.get());
-    return $store.watch((state) => setState(() => state));
-  }, deps);
+  useEffect(() => $store.watch((state) => setState(() => state)), deps);
 
   return state;
 };
