@@ -1,24 +1,51 @@
 import { useState, useEffect } from "preact/hooks";
-import { Store } from "../types";
+import { store as factory } from "../index.js";
+import { ReadStore as ReadSource, WriteStore as WriteSource } from "../types";
 
-export const useStore = <State>(
-  $store: Store<State>,
-  deps: readonly any[] = [$store],
-) => {
-  const [state, setState] = useState<State>($store.get());
-  useEffect(() => $store.subscribe((state) => setState(() => state)), deps);
-  return state;
+const reactor = <State>($store: ReadSource<State> | WriteSource<State>) => {
+  const map = $store.map;
+
+  return Object.assign($store, {
+    use: <Selected = State>(
+      mapper?: (state: State) => Selected,
+      deps: unknown[] = [],
+    ) => {
+      const [state, setState] = useState<Selected>(
+        (mapper ? mapper($store.get()) : $store.get()) as Selected,
+      );
+
+      useEffect(
+        () =>
+          (mapper ? $store.map(mapper) : $store).subscribe(
+            (value: Selected | State) => setState(() => value as Selected),
+          ),
+        deps,
+      );
+
+      return state;
+    },
+    map: <Selected>(mapper: (state: State) => Selected): ReadStore<Selected> =>
+      reactor(map(mapper)) as ReadStore<Selected>,
+  });
 };
 
-export type {
-  Action,
-  Task,
-  WriteStore,
-  ReadStore,
-  Store,
-  Unit,
-  Command,
-  Disposer,
-} from "../types";
+export interface ReadStore<State> extends ReadSource<State> {
+  use<Selected = State>(
+    mapper?: (state: State) => Selected,
+    deps?: unknown[],
+  ): Selected;
+  map<Selected>(mapper: (state: State) => Selected): ReadStore<Selected>;
+}
+export interface WriteStore<State> extends WriteSource<State> {
+  use<Selected = State>(
+    mapper?: (state: State) => Selected,
+    deps?: unknown[],
+  ): Selected;
+  map<Selected>(mapper: (state: State) => Selected): ReadStore<Selected>;
+}
+export type Store<State> = ReadStore<State> | WriteStore<State>;
+export type { Action, Task, Unit, Command, Disposer } from "../types";
 
-export * from "../index.js";
+export { chain } from "../index.js";
+export const store = <State>(initialState: State) =>
+  reactor(factory(initialState)) as WriteStore<State>;

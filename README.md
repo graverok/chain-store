@@ -223,9 +223,9 @@ $store.set({ data: $partial.get() });     /* No output: the partial state hasn't
 
 ---
 
-### Optional impurity
+### Optional mutability
 
-Stores let you mutate state within updaters while notifying watchers only when the watched value changes. Changes are detected using strict equality (`===`).
+Stores let you mutate state within updater callbacks while notifying watchers only when the watched value changes. Changes are detected using strict equality (`===`).
 
 ```ts
 import { chain, store } from "chain-store";
@@ -265,25 +265,27 @@ setUser($store.get());                    /* No output: nothing changed */
 
 ### React<small><sup> `v16.8+`</sup></small> / Preact<small><sup> `v10+`</sup></small>
 
+React/Preact extensions re-export the core API and types extending `store` with **.use()** hook.
+
 ```tsx
-/* Re-exports core functions and types */
-import { chain, store, useStore, type Store } from "chain-store/react";
-                                    /* for Preact: "chain-store/preact"; */
+import { chain, store, type Store } from "chain-store/react";
+                                      /* "chain-store/preact"; for Preact */
 
 /* Store */
-const $counter: Store<number> = store(0);
+const $counter: Store<number> = store({ count: 0 });
 
 const change = chain<"plus" | "minus">()
   .map(val => val === "plus" ? 1 : -1)
-  .filter((shift: number) => $counter.get() + shift >= 0);
+  .map((val: number) => $counter.get().count + val)
+  .filter((count: number) => count >= 0);
 
-$counter.on(change, (state, shift: number) => {
-  return state + shift;
+$counter.on(change, (state, count: number) => {
+  return {...state, count }
 });
 
 /* App */
 const App = () => {
-  const count = useStore($counter);
+  const count = $counter.use(state => state.count);
   
   return <>
     <button onClick={() => change("minus")}>Decrement</button>
@@ -293,38 +295,38 @@ const App = () => {
 };
 ```
 
-**useStore** has an optional second argument: a dependency array. Use it with mapped stores to control subscriptions.
-```ts
-useStore<State>(
-  $store: Store<State>,
-  deps: DependencyList = [$store]
-): State;
-```
+The `use` hook accepts two optional arguments: a state mapper and 
+a dependency array to control subscription.
+
+- **use**`<R = State>`(map?: `(state: State) => R`, deps?: `DependencyList`): `R`
+
+
 
 ---
 <span id="vue"/>
 
 ### Vue<small><sup> `v3.3+`</sup></small>
+Vue extension re-export the core API and types extending `store` with **.use()** hook.
 
 ```vue
 <script lang="ts">
-  /* Re-exports core functions and types */
   import { chain, store, type Store } from "chain-store/vue";
 
   /* Store */
-  const $counter: Store<number> = store(0);
+  const $counter: Store<number> = store({ count: 0 });
 
   const change = chain<"plus" | "minus">()
     .map(val => val === "plus" ? 1 : -1)
-    .filter((shift: number) => $counter.get() + shift >= 0);
+    .map((val: number) => $counter.get().count + val)
+    .filter((count: number) => count >= 0);
 
-  $counter.on(change, (state, shift: number) => {
-    return state + shift;
+  $counter.on(change, (state, count: number) => {
+    return {...state, count }
   });
 </script>
 
 <script setup lang="ts">
-  const count = useStore($counter);
+  const count = $counter.use(state => state.count);
 </script>
 
 <template>
@@ -334,38 +336,37 @@ useStore<State>(
 </template>
 ```
 
-**useStore** can take a store getter as its first argument. It also accepts an optional dependency array as its second argument. Use the getter and dependencies to control subscriptions.
+The `use` hook accepts two optional arguments: a state mapper and
+a dependency array to control subscription.
 
-```ts
-useStore<State>(
-  $store: Store<State> | (() => Store<State>),
-  deps: WatchSource<unknown>[] = [],
-): readonly Ref<State>;
-```
+- **use**`<R = State>`(map?: `(state: State) => R`, deps?:  `WatchSource<unknown>[]`): `DeepReadonly<Ref<R>>`
+
 
 ---
 <span id="solid"/>
 
 ### Solid<small><sup> `v1.x`</sup></small>
 
+Solid extension re-export the core API and types extending `store` with **.use()** hook.
+
 ```tsx
-/* Re-exports core functions and types */
-import { chain, store, useStore, type Store } from "chain-store/solid";
+import { chain, store, type Store } from "chain-store/solid";
 
 /* Store */
-const $counter: Store<number> = store(0);
+const $counter: Store<number> = store({ count: 0 });
 
 const change = chain<"plus" | "minus">()
   .map(val => val === "plus" ? 1 : -1)
-  .filter((shift: number) => $counter.get() + shift >= 0);
+  .map((val: number) => $counter.get().count + val)
+  .filter((count: number) => count >= 0);
 
-$counter.on(change, (state, shift: number) => {
-  return state + shift;
+$counter.on(change, (state, count: number) => {
+  return {...state, count }
 });
 
 /* App */
 const App = () => {
-  const count = useStore($counter);
+  const count = $counter.use(state => state.count)
 
   return <>
     <button onClick={() => change("minus")}>Decrement</button>
@@ -375,35 +376,38 @@ const App = () => {
 };
 ```
 
-**useStore** can take a store getter as its first argument. It also accepts an optional dependency array as its second argument. Use the getter and dependencies to control subscriptions.
+The `use` hook accepts optional state mapper.
 
-```ts
-useStore<State>(
-  $store: Store<State> | (() => Store<State>),
-  deps: Accessor<unknown>[] = [],
-): Accessor<State>;
-```
+- **use**`<R = State>`(map?: `(state: State) => R`): `Accessor<R>`
+
 
 ---
 <span id="svelte"/>
 
 ### Svelte<small><sup> `v4+`</sup></small>
 
-Svelte works out of the box because `store` implements its contract.
+Svelte works out of the box because chain-store implements its contract.
 
 ```svelte
 <script lang="ts">
   import { store, chain } from "chain-store";
   
-  const counter = store(0);
+  const counter: Store<number> = store({ count: 0 });
+
   const change = chain<"plus" | "minus">()
     .map(val => val === "plus" ? 1 : -1)
-    .filter((shift: number) => counter.get() + shift >= 0);
-  counter.on(change, (state, shift: number) => state + shift);
+    .map((val: number) => counter.get().count + val)
+    .filter((count: number) => count >= 0);
+  
+  counter.on(change, (state, count: number) => {
+    return {...state, count }
+  });
+  
+  const count = counter.map(state => state.count);
 </script>
 
 <button onclick={() => change("plus")}>Increment</button>
-<strong>Counter: {$counter}</strong>
+<strong>Counter: {$count}</strong>
 <button onclick={() => change("minus")}>Decrement</button>
 ```
 ---
@@ -412,28 +416,52 @@ Svelte works out of the box because `store` implements its contract.
 
 ### Angular<small><sup> `v16+`</sup></small>
 
+Angular extension re-export the core API and types extending `store` with **.use()** hook.
+
 ```ts
-/* Re-exports core functions and types */
-import { chain, store, useStore, type Store, type Action } from "chain-store/angular";
+import { chain, store, type Store } from "chain-store/angular";
 import { Component } from "@angular/core";
 import { CommonModule } from "@angular/common";
 
 /* Store */
-const $counter: Store<number> = store(0);
-const change: Action<"plus" | "minus", number> = chain<"plus" | "minus">()
+const $counter: Store<number> = store({ count: 0 });
+
+const change = chain<"plus" | "minus">()
   .map(val => val === "plus" ? 1 : -1)
-  .filter((shift: number) => $counter.get() + shift >= 0);
-$counter.on(change, (state, shift: number) => state + shift);
+  .map((val: number) => $counter.get().count + val)
+  .filter((count: number) => count >= 0);
+
+$counter.on(change, (state, count: number) => {
+  return {...state, count }
+});
+
+/* App */
+@Component({
+  selector: "app-root",
+  standalone: true,
+  template: `
+    <button (click)="decrement()">Decrement</button>
+    <strong>Counter: {{ count() }}</strong>
+    <button (click)="increment()">Increment</button>
+  `,
+})
+
+export class AppComponent {
+  readonly count = $counter.use((state) => state.count);
+
+  decrement(): void {
+    change("minus");
+  }
+
+  increment(): void {
+    change("plus");
+  }
+}
 ```
 
-**useStore** can take a store getter as its first argument. It also accepts an optional dependency array as its second argument. Use the getter and dependencies to control subscriptions.
+The `use` hook accepts optional state mapper.
 
-```ts
-useStore<State>(
-  $store: Store<State> | (() => Store<State>),
-  deps: Signal<unknown>[] = [],
-): Signal<State>;
-```
+- **use**`<R = State>`(map?: `(state: State) => R`): `Signal<R>`
 
 <br/>
 
@@ -511,9 +539,10 @@ Commands run synchronously, except for tasks. Tasks start after a promise delay 
 
 ---
 
-**Unit**`<P, X = void>`
-- **watch**:`(fn: (params: P, ext: X) => void): Disposer`<br/>
-  Subscribes `fn` to the unit's emitter and returns a `Disposer*`: a function that removes the subscription.
+**Unit**`<Param, Ext = void>`
+- **watch**:`(fn: (params: Param, ext: Ext) => void): Disposer`<br/>
+  Subscribes `fn` to the unit's emitter and returns a `Disposer`: a void function 
+that removes the subscription.
 
 
 ---
@@ -584,3 +613,8 @@ Commands run synchronously, except for tasks. Tasks start after a promise delay 
 
 - **map**: `(mapper: <M>(state: State) => M): ReadStore<M>`<br/>
   Creates a read-only store (without `.on`, `.off`, or `.set`) that holds the mapped value and updates automatically when the parent store changes.<br/>
+
+
+- **subscribe**:`(fn: (state: State) => void): Disposer`<br/>
+  Same as `Unit.watch` but immediately invoke callback with current state value.
+

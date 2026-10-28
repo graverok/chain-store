@@ -1,45 +1,65 @@
 import {
-  watch,
-  shallowRef,
   readonly,
-  toValue,
-  type Ref,
+  ref,
+  watch,
   type WatchSource,
+  type Ref,
+  type DeepReadonly,
 } from "vue";
-import { Store } from "../types";
+import { store as factory } from "../index.js";
+import { ReadStore as ReadSource, WriteStore as WriteSource } from "../types";
 
-export function useStore<State>(
-  $store: Store<State> | (() => Store<State>),
-  deps: WatchSource<unknown>[] = [],
-) {
-  const state = shallowRef<State>(toValue($store).get()) as Ref<State>;
+function reactor<State>($store: ReadSource<State> | WriteSource<State>) {
+  const map = $store.map;
 
-  watch(
-    deps,
-    (_, __, onCleanup) => {
-      const store = toValue($store);
+  return Object.assign($store, {
+    use<Selected = State>(
+      mapper?: (state: State) => Selected,
+      deps: WatchSource<unknown>[] = [],
+    ): DeepReadonly<Ref<Selected>> {
+      const state = ref<Selected>(
+        (mapper ? mapper($store.get()) : $store.get()) as Selected,
+      ) as Ref<Selected>;
 
-      onCleanup(
-        store.subscribe((value: State) => {
-          state.value = value;
-        }),
+      watch(
+        deps,
+        (_, __, onCleanup) => {
+          onCleanup(
+            (mapper ? $store.map(mapper) : $store).subscribe(
+              (value: State | Selected) => {
+                state.value = value as Selected;
+              },
+            ),
+          );
+        },
+        { immediate: true },
       );
-    },
-    { immediate: true },
-  );
 
-  return readonly(state);
+      return readonly(state);
+    },
+    map<Selected>(mapper: (state: State) => Selected): ReadStore<Selected> {
+      return reactor(map(mapper)) as ReadStore<Selected>;
+    },
+  });
 }
 
-export type {
-  Action,
-  Task,
-  WriteStore,
-  ReadStore,
-  Store,
-  Unit,
-  Command,
-  Disposer,
-} from "../types";
+export interface ReadStore<State> extends ReadSource<State> {
+  use<Selected = State>(
+    mapper?: (state: State) => Selected,
+    deps?: WatchSource<unknown>[],
+  ): DeepReadonly<Ref<Selected>>;
+  map<Selected>(mapper: (state: State) => Selected): ReadStore<Selected>;
+}
+export interface WriteStore<State> extends WriteSource<State> {
+  use<Selected = State>(
+    mapper?: (state: State) => Selected,
+    deps?: WatchSource<unknown>[],
+  ): DeepReadonly<Ref<Selected>>;
+  map<Selected>(mapper: (state: State) => Selected): ReadStore<Selected>;
+}
+export type Store<State> = ReadStore<State> | WriteStore<State>;
+export type { Action, Task, Unit, Command, Disposer } from "../types";
 
-export * from "../index.js";
+export const store = <State>(initialState: State) =>
+  reactor(factory(initialState)) as WriteStore<State>;
+export { chain } from "../index.js";
