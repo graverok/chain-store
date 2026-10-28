@@ -23,7 +23,7 @@ import {
   type Watcher,
 } from "./utils";
 
-export const chain = <Input = void>() => createAction<Input>();
+export const chain = <Input = void>() => createAction<Input, Input>();
 
 export const store = <State>(initialState: State) =>
   createStore<State>(initialState);
@@ -107,15 +107,15 @@ const createAction = <Input = void, Output = Input>(
 
   const call: Carrier<Input | Output> = (params, config) => {
     try {
-      const catcher = (err?: Error) =>
+      const catcher = (error?: Error) =>
         config[1]?.()?.(() => {
-          if (err) {
-            err.name = "ChainError";
-            throw err;
+          if (error) {
+            error.name = "ChainError";
+            throw error;
           } else {
-            const err = new Error();
-            err.name = "ChainFilter";
-            throw err;
+            const error = new Error();
+            error.name = "ChainFilter";
+            throw error;
           }
         });
       if (map)
@@ -151,7 +151,7 @@ const createAction = <Input = void, Output = Input>(
   ) as Action<Input, Output>;
 };
 
-const createTask = <Input, Result, Params = Input, Err = Error>(
+const createTask = <Input, Result, Params>(
   start: Carrier<Input>,
   propagate: (fn: Carrier<Params>) => void,
   task: (params: Params) => Result | Promise<Result>,
@@ -178,10 +178,10 @@ const createTask = <Input, Result, Params = Input, Err = Error>(
       const result = await promise;
       !duplicate && emitter[1][1]?.(result, params);
       match?.(call)?.(() => result);
-    } catch (err) {
-      !duplicate && emitter[2][1]?.(err as Err, params);
+    } catch (error) {
+      !duplicate && emitter[2][1]?.(error, params);
       match?.(call)?.(() => {
-        throw err;
+        throw error;
       });
     } finally {
       duplicate
@@ -212,13 +212,13 @@ const createTask = <Input, Result, Params = Input, Err = Error>(
     done: createMethods(emitter[1]),
     fail: createMethods(emitter[2]),
     end: createMethods(emitter[3]),
-  }) as Task<Input, Params, Result, Err>;
+  }) as Task<Input, Params, Result>;
 };
 
-const createMethods = <Input, Output = Input>(
+const createMethods = <Input, Output>(
   emitter: Emitter,
   start?: Carrier<Input>,
-  next?: Carrier<Awaited<Output>>[],
+  next?: Carrier<Output>[],
 ) => {
   if (!start || !next) return { watch: subscriber(emitter) };
   return {
@@ -232,9 +232,16 @@ const createMethods = <Input, Output = Input>(
         void 0,
         cmd as Command<Output, boolean>,
       ),
-    task: <Result, Err>(
-      cmd: Command<Output, Result>,
-    ): Task<Input, Output, Result, Err> =>
-      createTask(start, pusher(next), cmd as Command<Output, Result>),
+    task: <Result>(cmd: Command<Output, Result>) =>
+      createTask<
+        Input,
+        Output extends Promise<infer U> ? U : Output,
+        Result extends Promise<infer U> ? U : Result
+      >(
+        start,
+        //@ts-expect-error
+        pusher(next),
+        cmd as Command<Output, Result>,
+      ),
   };
 };

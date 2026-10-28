@@ -1,7 +1,7 @@
 {
   "name": "chain-store",
   "description": "Tiny, dependency-free state manager with event-driven stores, extensible action chains, and async workflows.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "Aleksandr Gurianov",
     "url": "http://golova.pro"

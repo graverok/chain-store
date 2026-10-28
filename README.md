@@ -560,12 +560,12 @@ that removes the subscription.
   Creates a new action that filters `Output`. If the value is filtered out, execution and emission stop.
 
 
-- **task**:`(fn: <Result, Error>(arg: Output) => Promise<Result>): Task<Input, Output, Result, Error>`<br/>
+- **task**:`(fn: <Result>(arg: Output) => Promise<Result>): Task<Input, Output, Result>`<br/>
   Creates a `Task` with the provided asynchronous command.
 
 ---
 
-### **Task**`<Input, Params, Result, Error>`<br/>
+### **Task**`<Input, Params, Result>`<br/>
 - extends **Call**`<Input, Promise<Result>`<br/>
   When called, returns `.val`, a function that returns a `Promise<Result>`.
 

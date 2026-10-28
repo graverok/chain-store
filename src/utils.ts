@@ -19,19 +19,31 @@ export type Commands<Input, Output> = {
     fn: Fn,
   ) => Action<
     Input,
-    ReturnType<Fn> extends Promise<boolean> ? Promise<Awaited<Output>> : Output
+    ReturnType<Fn> extends Promise<unknown>
+      ? Output extends infer U
+        ? Promise<U>
+        : never
+      : Output
   >;
-  map: <Mapped, Fn extends Command<Output, Mapped>>(
+  map: <Fn extends Command<Output, unknown>>(
     fn: Fn,
   ) => Action<
     Input,
     Output extends Promise<unknown>
-      ? Promise<Awaited<ReturnType<Fn>>>
-      : ReturnType<Fn>
+      ? ReturnType<Fn> extends infer U
+        ? Promise<U>
+        : never
+      : ReturnType<Fn> extends infer U
+        ? U
+        : never
   >;
-  task: <Result, Err = Error>(
+  task: <Result>(
     fn: Command<Output, Result>,
-  ) => Task<Input, Output, Result, Err>;
+  ) => Task<
+    Input,
+    Output extends Promise<infer U> ? U : Output,
+    Result extends Promise<infer U> ? U : Result
+  >;
 };
 
 export const caller =
@@ -45,7 +57,7 @@ export const caller =
 export const resolver = <P, R>(
   param: P,
   fn: (param: P) => R | Promise<R>,
-  resolve: (r: R) => void,
+  resolve: (res: R) => void,
   reject: (err: Error) => void,
 ) => {
   const res = fn(param);
@@ -98,8 +110,9 @@ export const subscriber =
     return emitter[0](callback);
   };
 
-export const evaluate = <Result, Err = Error>(sync?: boolean) => {
-  const stored: (() => Result)[] | [(r: Result) => void, (e: Err) => void] = [];
+export const evaluate = <Result>(sync?: boolean) => {
+  const stored: (() => Result)[] | [(r: Result) => void, (e: Error) => void] =
+    [];
 
   return [
     () =>
@@ -125,7 +138,7 @@ export const evaluate = <Result, Err = Error>(sync?: boolean) => {
       try {
         (stored[0] as (r: Result) => void)(res());
       } catch (err) {
-        (stored[1] as (e: Err) => void)?.(err as Err);
+        (stored[1] as (e: Error) => void)?.(err as Error);
       }
     },
   ];

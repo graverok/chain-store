@@ -6,7 +6,7 @@ export interface Unit<P = any, X = void> {
   watch(watcher: (p: P, x: X) => void): Disposer;
 }
 
-export type Command<I, O> = (params: Awaited<I>) => O | Promise<O>;
+export type Command<I, O> = (params: I extends Promise<infer U> ? U : I) => O;
 
 export interface Action<Input = void, Output = Input>
   extends
@@ -14,10 +14,10 @@ export interface Action<Input = void, Output = Input>
     Unit<Output>,
     Commands<Input, Output> {}
 
-export interface Task<Input, Params = Input, Result = unknown, Err = Error>
+export interface Task<Input, Params = Input, Result = unknown>
   extends Call<Input, { val(): Promise<Result> }>, Unit<Params> {
   done: Unit<Result, Params>;
-  fail: Unit<Err, Params>;
+  fail: Unit<Error, Params>;
   end: Unit<Params>;
 }
 
