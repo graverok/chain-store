@@ -1,20 +1,4 @@
 {
-  "name": "chain-store-vue",
-  "description": "Vue Chain-Store",
-  "version": "0.0.1",
-  "author": {
-    "name": "Aleksandr Gurianov",
-    "url": "http://golova.pro"
-  },
-  "homepage": "https://graverok.github.io/chain-store",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/graverok/chain-store.git"
-  },
-  "bugs": {
-    "url": "https://github.com/graverok/chain-store/issues"
-  },
-  "license": "MIT",
   "peerDependencies": {
     "vue": ">=3.3.0"
   }

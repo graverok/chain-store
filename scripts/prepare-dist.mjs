@@ -76,14 +76,3 @@ for (const file of ["LICENSE"]) {
     if (error.code !== "ENOENT") throw error;
   }
 }
-
-for (const plugin of ["react", "preact", "vue", "solid"]) {
-  try {
-    await copyFile(
-      new URL(`../src/${plugin}/package.json`, import.meta.url),
-      new URL(`../dist/${plugin}/package.json`, import.meta.url),
-    );
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-  }
-}

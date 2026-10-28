@@ -46,6 +46,30 @@
     "vitest": "^5.0.4",
     "vue": "3.3.0"
   },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "preact": ">=10.0.0",
+    "solid-js": "^1.0.0",
+    "vue": ">=3.3.0",
+    "@angular/core": ">=16.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "preact": {
+      "optional": true
+    },
+    "solid-js": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    },
+    "@angular/core": {
+      "optional": true
+    }
+  },
   "scripts": {
     "build": "node scripts/clean-dist.mjs && tsc --noEmit && vitest --run && vite build && node scripts/prepare-dist.mjs",
     "size": "yarn build && brotli ./dist/index.cjs",
