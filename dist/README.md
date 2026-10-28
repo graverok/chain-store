@@ -8,22 +8,23 @@
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
 - Built-in tree-shaking support for **React/Preact**, **Solid**, **Vue**, **Svelte**, **Angular**.
-- Small: **2.26 kB** minified, **1.06 kB** gzipped. Zero dependencies.
+- Small, dependency-free core: **2.26 kB** minified, **1.05 kB** gzipped. Framework adapters add just 0.29–0.31 kB.
 
 ```ts
 // store.ts
-import { chain, store, type Action, type Task, type Store } from "chain-store";
+import { chain, store, type Action, type Task, type Store } from "chain-store/react";
 
 type User = { id: number; name: string };
 type UserStore = { page: number, users: User[] };
 
-/** Create store of users */
+/** Create the store */
 const $users: Store<UserStore> = store<UserStore>({
   page: 1,
   users: Record<number, User[]>,
 });
 
-/** Create chained task with filter and mapper to get page number */
+/** Create a chained task that maps inputs to a page number 
+  * and filters out invalid pages */
 const changePage = chain<number | void>()
   .map((inc: number) => $users.get().page + (inc ?? 0))
   .filter((page: number) => page >= 1)
@@ -31,7 +32,7 @@ const changePage = chain<number | void>()
     .then(response => response.json() as User[])
   );
 
-/** Subscribe store to task emissions */
+/** Update the store when the task emits */
 $users
   .on(changePage, (state: UserStore, page: number) => {
     return { ...state, page}
@@ -47,14 +48,13 @@ export { $users, changePage };
 ```
 
 ```tsx
-// app.tsx
-import { useStore } from "chain-store/react";
+// App.tsx
 import { useCallback, useEffect, useState } from "react";
 import { $users, changePage } from "./store";
 
 export const App = () => {
-  const page = useStore($users.map(state => state.page), []);
-  const users = useStore($users.map(state => state.users[page] ?? []), [ page ]);
+  const page = $users.use(state => state.page);
+  const users = $users.use((state => state.users[page]), [ page ]);
 
   const [ loading, setLoading ] = useState(false);
 

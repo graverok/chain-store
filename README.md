@@ -8,7 +8,7 @@
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
 - Built-in tree-shaking support for **React/Preact**, **Solid**, **Vue**, **Svelte**, **Angular**.
-- Small: **2.26 kB** minified, **1.06 kB** gzipped. Zero dependencies.
+- Small, dependency-free core: **2.26 kB** minified, **1.05 kB** gzipped. Framework adapters add just 0.29–0.31 kB.
 
 ### Installation
 
@@ -22,7 +22,7 @@ npm install chain-store
 - [**Action**](#action)<br/>
 - [**Task**](#task)<br/>
 - [**Store**](#store):  [Partial store](#partial-store)  •  [Optional mutability](#optional-mutability)<br/>
-- **Integration**:  [React/Preact](#react-preact)  •  [Vue](#vue)  •  [Solid](#solid)  •  [Svelte](#svelte)  •  [Angular](#angular)<br/>
+- **Adapters**:  [React/Preact](#react-preact)  •  [Solid](#solid)  •  [Vue](#vue)  •  [Svelte](#svelte)  •  [Angular](#angular)<br/>
 - **Additional info**:  [.val()](#val)  •  [Chain life cycle](#chain-life-cycle)<br/>
 - [**Types summary**](#types-summary)<br/>
 
@@ -205,7 +205,7 @@ $data.off(); /* Removes all subscriptions */
 
 ### Partial store
 
-Use `.map` on a store to get part of its state. Partial stores are read-only (no `.set`/`.on`/`.off` methods) and cannot be updated directly.
+Use `.map` on a store to get part of its state. Partial stores are read-only and cannot be updated directly.
 
 ```ts
 const $store = store({ data: { name: "part" } });
@@ -259,13 +259,13 @@ setUser($store.get());                    /* No output: nothing changed */
 
 <br/>
 
-## Integration
+## Adapters
 
 <span id="react-preact"/>
 
 ### React<small><sup> `v16.8+`</sup></small> / Preact<small><sup> `v10+`</sup></small>
 
-React/Preact extensions re-export the core API and types extending `store` with **.use()** hook.
+React and Preact adapters re-export the core API and types extending `store` with **.use()** hook.
 
 ```tsx
 import { chain, store, type Store } from "chain-store/react";
@@ -300,13 +300,50 @@ a dependency array to control subscription.
 
 - **use**`<R = State>`(map?: `(state: State) => R`, deps?: `DependencyList`): `R`
 
+---
+<span id="solid"/>
 
+### Solid<small><sup> `v1.x`</sup></small>
+
+Solid adapter re-export the core API and types extending `store` with **.use()** hook.
+
+```tsx
+import { chain, store, type Store } from "chain-store/solid";
+
+/* Store */
+const $counter: Store<number> = store({ count: 0 });
+
+const change = chain<"plus" | "minus">()
+  .map(val => val === "plus" ? 1 : -1)
+  .map((val: number) => $counter.get().count + val)
+  .filter((count: number) => count >= 0);
+
+$counter.on(change, (state, count: number) => {
+  return {...state, count }
+});
+
+/* App */
+const App = () => {
+  const count = $counter.use(state => state.count)
+
+  return <>
+    <button onClick={() => change("minus")}>Decrement</button>
+    <strong>Counter: {count()}</strong>
+    <button onClick={() => change("plus")}>Increment</button>
+  </>;
+};
+```
+
+The `use` hook accepts optional state mapper.
+
+- **use**`<R = State>`(map?: `(state: State) => R`): `Accessor<R>`
 
 ---
+
 <span id="vue"/>
 
 ### Vue<small><sup> `v3.3+`</sup></small>
-Vue extension re-export the core API and types extending `store` with **.use()** hook.
+Vue adapter re-export the core API and types extending `store` with **.use()** hook.
 
 ```vue
 <script lang="ts">
@@ -342,51 +379,13 @@ a dependency array to control subscription.
 - **use**`<R = State>`(map?: `(state: State) => R`, deps?:  `WatchSource<unknown>[]`): `DeepReadonly<Ref<R>>`
 
 
----
-<span id="solid"/>
-
-### Solid<small><sup> `v1.x`</sup></small>
-
-Solid extension re-export the core API and types extending `store` with **.use()** hook.
-
-```tsx
-import { chain, store, type Store } from "chain-store/solid";
-
-/* Store */
-const $counter: Store<number> = store({ count: 0 });
-
-const change = chain<"plus" | "minus">()
-  .map(val => val === "plus" ? 1 : -1)
-  .map((val: number) => $counter.get().count + val)
-  .filter((count: number) => count >= 0);
-
-$counter.on(change, (state, count: number) => {
-  return {...state, count }
-});
-
-/* App */
-const App = () => {
-  const count = $counter.use(state => state.count)
-
-  return <>
-    <button onClick={() => change("minus")}>Decrement</button>
-    <strong>Counter: {count()}</strong>
-    <button onClick={() => change("plus")}>Increment</button>
-  </>;
-};
-```
-
-The `use` hook accepts optional state mapper.
-
-- **use**`<R = State>`(map?: `(state: State) => R`): `Accessor<R>`
-
 
 ---
 <span id="svelte"/>
 
 ### Svelte<small><sup> `v4+`</sup></small>
 
-Svelte works out of the box because chain-store implements its contract.
+Svelte works out of the box because `chain-store` implements Svelte’s store contract.
 
 ```svelte
 <script lang="ts">
@@ -416,7 +415,7 @@ Svelte works out of the box because chain-store implements its contract.
 
 ### Angular<small><sup> `v16+`</sup></small>
 
-Angular extension re-export the core API and types extending `store` with **.use()** hook.
+Angular adapter re-export the core API and types extending `store` with **.use()** hook.
 
 ```ts
 import { chain, store, type Store } from "chain-store/angular";
@@ -616,5 +615,5 @@ that removes the subscription.
 
 
 - **subscribe**:`(fn: (state: State) => void): Disposer`<br/>
-  Same as `Unit.watch` but immediately invoke callback with current state value.
+  Like `Unit.watch`,  but immediately invokes the callback with the current state value.
 
