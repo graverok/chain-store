@@ -1,5 +1,3 @@
-<br/>
-
 ![chain-store](./docs/chain-store-light.svg?sanitize=true#gh-light-mode-only)![chain-store](./docs/chain-store-dark.svg?sanitize=true#gh-dark-mode-only)
 
 **A simple event-based state manager.**<br/>
