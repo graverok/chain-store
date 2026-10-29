@@ -1,8 +1,11 @@
 import { Accessor, createEffect, createSignal, onCleanup } from "solid-js";
-import { store as factory } from "../index.js";
-import { ReadStore as ReadSource, WriteStore as WriteSource } from "../types";
+import {
+  store as factory,
+  type ReadStore as ReadSource,
+  type WriteStore as WriteSource,
+} from "chain-store";
 
-const reactor = <State>($store: ReadSource<State> | WriteSource<State>) => {
+const adapt = <State>($store: ReadSource<State> | WriteSource<State>) => {
   const map = $store.map;
 
   return Object.assign($store, {
@@ -22,7 +25,7 @@ const reactor = <State>($store: ReadSource<State> | WriteSource<State>) => {
       return state;
     },
     map: <Selected>(mapper: (state: State) => Selected): ReadStore<Selected> =>
-      reactor(map(mapper)) as ReadStore<Selected>,
+      adapt(map(mapper)) as ReadStore<Selected>,
   });
 };
 
@@ -42,5 +45,5 @@ export type Store<State> = ReadStore<State> | WriteStore<State>;
 export type { Action, Task, Unit, Command, Disposer } from "../types";
 
 export const store = <State>(initialState: State) =>
-  reactor(factory(initialState)) as WriteStore<State>;
-export { chain } from "../index.js";
+  adapt(factory(initialState)) as WriteStore<State>;
+export { chain } from "chain-store";

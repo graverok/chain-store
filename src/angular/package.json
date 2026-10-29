@@ -1,0 +1,12 @@
+{
+  "name": "@chain-store/angular",
+  "description": "Angular adapter for chain-store, a tiny and simple event-based state manager.",
+  "version": "0.0.1",
+  "peerDependencies": {
+    "@angular/core": ">=16.0.0",
+    "chain-store": "^0.1.0"
+  },
+  "devDependencies": {
+    "chain-store": "^0.1.0"
+  }
+}

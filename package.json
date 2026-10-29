@@ -1,6 +1,6 @@
 {
   "name": "chain-store",
-  "description": "Tiny, dependency-free state manager with event-driven stores, extensible action chains, and async workflows.",
+  "description": "Tiny and simple dependency-free state manager with event-driven stores, extensible action chains, and async workflows.",
   "version": "0.1.1",
   "author": {
     "name": "Aleksandr Gurianov",
@@ -46,33 +46,9 @@
     "vitest": "^5.0.4",
     "vue": "3.3.0"
   },
-  "peerDependencies": {
-    "react": ">=16.8.0",
-    "preact": ">=10.0.0",
-    "solid-js": "^1.0.0",
-    "vue": ">=3.3.0",
-    "@angular/core": ">=16.0.0"
-  },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    },
-    "preact": {
-      "optional": true
-    },
-    "solid-js": {
-      "optional": true
-    },
-    "vue": {
-      "optional": true
-    },
-    "@angular/core": {
-      "optional": true
-    }
-  },
   "scripts": {
-    "build": "node scripts/clean-dist.mjs && tsc --noEmit && vitest --run && vite build && node scripts/prepare-dist.mjs",
-    "size": "yarn build && brotli ./dist/index.cjs",
+    "build": "tsc --noEmit && vitest --run && vite build && node scripts/prepare-dist.mjs",
+    "sizes": "node scripts/adapter-sizes.mjs",
     "test": "vitest"
   }
 }

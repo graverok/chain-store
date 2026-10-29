@@ -1,8 +1,11 @@
 import { DestroyRef, inject, signal, type Signal } from "@angular/core";
-import { store as factory } from "../index.js";
-import { ReadStore as ReadSource, WriteStore as WriteSource } from "../types";
+import {
+  store as factory,
+  type ReadStore as ReadSource,
+  type WriteStore as WriteSource,
+} from "chain-store";
 
-function reactor<State>($store: ReadSource<State> | WriteSource<State>) {
+const adapt = <State>($store: ReadSource<State> | WriteSource<State>) => {
   const map = $store.map;
 
   return Object.assign($store, {
@@ -23,10 +26,10 @@ function reactor<State>($store: ReadSource<State> | WriteSource<State>) {
       return state.asReadonly();
     },
     map<Selected>(mapper: (state: State) => Selected): ReadStore<Selected> {
-      return reactor(map(mapper)) as ReadStore<Selected>;
+      return adapt(map(mapper)) as ReadStore<Selected>;
     },
   });
-}
+};
 
 export interface ReadStore<State> extends ReadSource<State> {
   use<Selected = State>(mapper?: (state: State) => Selected): Signal<Selected>;
@@ -37,8 +40,8 @@ export interface WriteStore<State> extends WriteSource<State> {
   map<Selected>(mapper: (state: State) => Selected): ReadStore<Selected>;
 }
 export type Store<State> = ReadStore<State> | WriteStore<State>;
-export type { Action, Task, Unit, Command, Disposer } from "../types";
+export type { Action, Task, Unit, Command, Disposer } from "chain-store";
 
 export const store = <State>(initialState: State) =>
-  reactor(factory(initialState)) as WriteStore<State>;
-export { chain } from "../index.js";
+  adapt(factory(initialState)) as WriteStore<State>;
+export { chain } from "chain-store";

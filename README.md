@@ -1,19 +1,19 @@
-![chain-store](./docs/chain-store-light.svg?sanitize=true#gh-light-mode-only)![chain-store](./docs/chain-store-dark.svg?sanitize=true#gh-dark-mode-only)
+# ![chain-store](./docs/chain-store-light.svg?sanitize=true#gh-light-mode-only)![chain-store](./docs/chain-store-dark.svg?sanitize=true#gh-dark-mode-only)
 
-**A simple event-based state manager.**<br/>
+**A tiny, simple event-based state manager.**<br/>
 - Actions with pre-bound chains of filters and mappings;
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
-- Built-in tree-shaking support for **React/Preact**, **Solid**, **Vue**, **Svelte**, **Angular**.
-- Small, dependency-free core: **2.26 kB** minified, **1.05 kB** gzipped. Framework adapters add just 0.29–0.31 kB.
+- Separate adapters for [**React**](https://www.npmjs.com/package/@chain-store/react), [**Preact**](https://www.npmjs.com/package/@chain-store/preact), [**Solid**](https://www.npmjs.com/package/@chain-store/solid), [**Vue**](https://www.npmjs.com/package/@chain-store/vue), and [**Angular**](https://www.npmjs.com/package/@chain-store/angular); built-in support for **Svelte**;
+- Tiny: **2.26 kB** minified, **1.05 kB** gzipped, with zero dependencies.
+
 
 ### Installation
 
 ```sh
 npm install chain-store
 ```
-
 
 
 ### Table of contents:
@@ -263,11 +263,17 @@ setUser($store.get());                    /* No output: nothing changed */
 
 ### React<small><sup> `v16.8+`</sup></small> / Preact<small><sup> `v10+`</sup></small>
 
+```shell
+npm install chain-store @chain-store/react
+```
+
+```shell
+npm install chain-store @chain-store/preact
+```
 React and Preact adapters re-export the core API and types extending `store` with **.use()** hook.
 
 ```tsx
-import { chain, store, type Store } from "chain-store/react";
-                                      /* "chain-store/preact"; for Preact */
+import { chain, store, type Store } from "@chain-store/react";
 
 /* Store */
 const $counter: Store<number> = store({ count: 0 });
@@ -303,10 +309,14 @@ a dependency array to control subscription.
 
 ### Solid<small><sup> `v1.x`</sup></small>
 
+```shell
+npm install chain-store @chain-store/solid
+```
+
 Solid adapter re-export the core API and types extending `store` with **.use()** hook.
 
 ```tsx
-import { chain, store, type Store } from "chain-store/solid";
+import { chain, store, type Store } from "@chain-store/solid";
 
 /* Store */
 const $counter: Store<number> = store({ count: 0 });
@@ -341,11 +351,16 @@ The `use` hook accepts optional state mapper.
 <span id="vue"/>
 
 ### Vue<small><sup> `v3.3+`</sup></small>
+
+```shell
+npm install chain-store @chain-store/vue
+```
+
 Vue adapter re-export the core API and types extending `store` with **.use()** hook.
 
 ```vue
 <script lang="ts">
-  import { chain, store, type Store } from "chain-store/vue";
+  import { chain, store, type Store } from "@chain-store/vue";
 
   /* Store */
   const $counter: Store<number> = store({ count: 0 });
@@ -413,10 +428,14 @@ Svelte works out of the box because `chain-store` implements Svelte’s store co
 
 ### Angular<small><sup> `v16+`</sup></small>
 
+```shell
+npm install chain-store @chain-store/angular
+```
+
 Angular adapter re-export the core API and types extending `store` with **.use()** hook.
 
 ```ts
-import { chain, store, type Store } from "chain-store/angular";
+import { chain, store, type Store } from "@chain-store/angular";
 import { Component } from "@angular/core";
 import { CommonModule } from "@angular/common";
 

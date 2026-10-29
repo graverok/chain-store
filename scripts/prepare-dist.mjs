@@ -30,25 +30,22 @@ const distPackage = Object.fromEntries(
     .map((key) => [key, rootPackage[key]]),
 );
 
-const plugins = ["react", "preact", "vue", "solid", "angular"];
+const plugins = ["react", "preact", "solid", "vue", "angular"];
+const keywords = distPackage.keywords;
 
 Object.assign(distPackage, {
-  keywords: [...distPackage.keywords, ...plugins],
+  keywords: [...keywords, ...plugins],
   type: "module",
   main: "./index.cjs",
   module: "./index.js",
   types: "./index.d.ts",
-  exports: [".", ...plugins.map((p) => `./${p}`)].reduce(
-    (acc, path) => ({
-      ...acc,
-      [path]: {
-        types: `${path}/index.d.ts`,
-        import: `${path}/index.js`,
-        require: `${path}/index.cjs`,
-      },
-    }),
-    {},
-  ),
+  exports: {
+    ".": {
+      types: "./index.d.ts",
+      import: "./index.js",
+      require: "./index.js",
+    },
+  },
   files: [
     "index.js",
     "index.cjs",
@@ -57,7 +54,6 @@ Object.assign(distPackage, {
     "types.d.ts",
     "utils.d.ts",
     "README.md",
-    ...plugins,
   ],
 });
 
@@ -68,9 +64,60 @@ await writeFile(
 
 for (const file of ["LICENSE"]) {
   try {
+    for (const dist of ["dist", ...plugins.map((plugin) => `dist/${plugin}`)]) {
+      await copyFile(
+        new URL(`../${file}`, import.meta.url),
+        new URL(`../${dist}/${file}`, import.meta.url),
+      );
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+}
+
+for (const src of ["", ...plugins.map((plugin) => `/${plugin}`)]) {
+  try {
     await copyFile(
-      new URL(`../${file}`, import.meta.url),
-      new URL(`../dist/${file}`, import.meta.url),
+      new URL(`../src${src}/README.md`, import.meta.url),
+      new URL(`../dist${src}/README.md`, import.meta.url),
+    );
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+}
+
+for (const plugin of plugins) {
+  try {
+    let adapterPackage = JSON.parse(
+      await readFile(
+        new URL(`../src/${plugin}/package.json`, import.meta.url),
+        "utf8",
+      ),
+    );
+
+    adapterPackage = Object.fromEntries(
+      fieldsToKeep
+        .filter((key) => adapterPackage[key] !== undefined)
+        .map((key) => [key, adapterPackage[key]]),
+    );
+
+    const content = {
+      ...distPackage,
+      keywords: [...keywords, plugin],
+      ...adapterPackage,
+      exports: {
+        ".": {
+          types: "./index.d.ts",
+          import: "./index.js",
+          require: "./index.cjs",
+        },
+      },
+      files: ["index.js", "index.cjs", "index.d.ts", "README.md"],
+    };
+
+    await writeFile(
+      new URL(`../dist/${plugin}/package.json`, import.meta.url),
+      `${JSON.stringify(content, null, 2)}\n`,
     );
   } catch (error) {
     if (error.code !== "ENOENT") throw error;

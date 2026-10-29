@@ -1,0 +1,12 @@
+{
+  "name": "@chain-store/solid",
+  "description": "Solid adapter for chain-store, a tiny and simple event-based state manager.",
+  "version": "0.0.1",
+  "peerDependencies": {
+    "solid": "^1.0.0",
+    "chain-store": "^0.1.0"
+  },
+  "devDependencies": {
+    "chain-store": "^0.1.0"
+  }
+}

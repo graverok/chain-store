@@ -1,0 +1,12 @@
+{
+  "name": "@chain-store/react",
+  "description": "React adapter for chain-store, a tiny and simple event-based state manager.",
+  "version": "0.0.1",
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "chain-store": "^0.1.0"
+  },
+  "devDependencies": {
+    "chain-store": "^0.1.0"
+  }
+}
