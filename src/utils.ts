@@ -4,7 +4,7 @@ export type Match<R = any> = (
   carrier?: Carrier,
 ) => ((respondent: () => R) => void) | void;
 
-export type Queue = VoidFunction[];
+export type Queue = (() => void)[];
 export type Carrier<P = any, R = any> = (
   params: P,
   config: [Queue, Match<R> | void],
@@ -81,7 +81,7 @@ export const splicer = <U = unknown>(
   return index >= 0 ? arr.splice(index, 1)[0] : void 0;
 };
 
-export const awaiter = (fn: VoidFunction) =>
+export const awaiter = (fn: () => void) =>
   Promise.resolve()
     .then(fn)
     .catch(() => {});

@@ -1,6 +1,6 @@
 import { Call, Commands, Watcher } from "./utils";
 
-export type Disposer = VoidFunction;
+export type Disposer = () => void;
 
 export interface Unit<P = any, X = void> {
   watch(watcher: (p: P, x: X) => void): Disposer;
