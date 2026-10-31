@@ -105,32 +105,24 @@ const createAction = <Input = void, Output = Input>(
     caller<Output>(params, config)(next);
   };
 
-  const call: Carrier<Input | Output> = (params, config) => {
+  const call: Carrier<Input | Output> = (param, config) => {
     try {
       const catcher = (error?: Error) =>
         config[1]?.()?.(() => {
-          if (error) {
-            error.name = "ChainError";
-            throw error;
-          } else {
-            const error = new Error();
-            error.name = "ChainFilter";
-            throw error;
-          }
+          let err = error ?? new Error();
+          err.name = error ? "ChainError" : "ChainFilter";
+          throw err;
         });
-      if (map)
-        return resolver(params, map, (res) => exec(res, config), catcher);
-      if (filter)
-        return resolver(
-          params,
-          filter,
-          (res) => {
-            if (res) return exec(params as Output, config);
-            catcher();
-          },
-          catcher,
-        );
-      exec(params as Output, config);
+      return map
+        ? resolver(param, map, (res) => exec(res, config), catcher, true)
+        : filter
+          ? resolver(
+              param,
+              filter,
+              (res) => (res ? exec(param as Output, config) : catcher()),
+              catcher,
+            )
+          : exec(param as Output, config);
     } catch {}
   };
 

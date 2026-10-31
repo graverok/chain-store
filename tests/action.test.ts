@@ -157,3 +157,25 @@ test("action function types", async () => {
   fn1(func(10));
   expect(res).toBe("promise");
 });
+
+test("action promises types", async () => {
+  const promise = new Promise<number>((resolve) => resolve(10));
+  let results: any[] = [];
+  const act1 = chain<Promise<number>>().map((p) => p);
+  const act2 = chain<number>().map(async (n) => n);
+  const act3 = chain<Promise<number>>().map(async (p) => String(await p));
+  const act4 = chain().map(async () => promise);
+
+  const payload = [promise, 10, promise, void 0];
+  const expected = [promise, 10, "10", 10];
+
+  [act1, act2, act3, act4].forEach((action, index) => {
+    action.watch((r) => {
+      results[index] = r;
+    });
+    action(payload[index]);
+  });
+
+  await delay(1);
+  expected.forEach((answer, index) => expect(results[index]).toBe(answer));
+});

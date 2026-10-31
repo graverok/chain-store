@@ -56,12 +56,14 @@ export const caller =
 
 export const resolver = <P, R>(
   param: P,
-  fn: (param: P) => R | Promise<R>,
+  fn: (param: P) => Promise<R> | R,
   resolve: (res: R) => void,
   reject: (err: Error) => void,
+  mapper = false,
 ) => {
   const res = fn(param);
-  if (!(res instanceof Promise)) return resolve(res);
+  if (!(res instanceof Promise) || (mapper && param === res))
+    return resolve(res as R);
   res.then(resolve).catch(reject);
 };
 
