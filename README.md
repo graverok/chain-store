@@ -51,6 +51,7 @@ const testAction: Action<number, string> = chain<number>()
 ```
 
 <br/>
+
 Subscribe to Action emitted outputs with `.watch` method.
 It takes callback `(value: Output) => void` and returns `Disposer`, a void
 function to cancel subscription.
@@ -590,7 +591,7 @@ Commands run synchronously, except for tasks. Tasks start after a promise delay 
 ---
 
 ### **Task**`<Input, Params, Result>`<br/>
-- extends **Call**`<Input, Promise<Result>`<br/>
+- extends **Call**`<Input, Promise<Result>>`<br/>
   Returns a `Promise<Result>` when called.
 
 
