@@ -5,7 +5,7 @@
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
-- Tiny and dependency-free: **2.72 kB** minified, **1.24 kB** gzipped with the Solid adapter included.
+- Small and dependency-free: **2.40 kB** minified, **1.14 kB** gzipped with the Solid adapter included.
 
 
 ```shell

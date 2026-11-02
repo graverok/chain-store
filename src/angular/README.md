@@ -5,7 +5,7 @@
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
-- Tiny and dependency-free: **2.74 kB** minified, **1.25 kB** gzipped with the Angular adapter included.
+- Small and dependency-free: **2.42 kB** minified, **1.14 kB** gzipped with the Angular adapter included.
 
 
 ```shell

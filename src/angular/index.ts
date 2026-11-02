@@ -1,11 +1,8 @@
 import { DestroyRef, inject, signal, type Signal } from "@angular/core";
-import {
-  store as factory,
-  type ReadStore as ReadSource,
-  type WriteStore as WriteSource,
-} from "chain-store";
+import { store as factory } from "chain-store";
+import type { Store as Source, StorePart as SourcePart } from "chain-store";
 
-const adapt = <State>($store: ReadSource<State> | WriteSource<State>) => {
+const adapt = <State>($store: SourcePart<State> | Source<State>) => {
   const map = $store.map;
 
   return Object.assign($store, {
@@ -25,23 +22,21 @@ const adapt = <State>($store: ReadSource<State> | WriteSource<State>) => {
 
       return state.asReadonly();
     },
-    map<Selected>(mapper: (state: State) => Selected): ReadStore<Selected> {
-      return adapt(map(mapper)) as ReadStore<Selected>;
-    },
+    map: <Selected>(mapper: (state: State) => Selected): StorePart<Selected> =>
+      adapt(map(mapper)),
   });
 };
 
-export interface ReadStore<State> extends ReadSource<State> {
+export interface StorePart<State> extends SourcePart<State> {
   use<Selected = State>(mapper?: (state: State) => Selected): Signal<Selected>;
-  map<Selected>(mapper: (state: State) => Selected): ReadStore<Selected>;
+  map<Selected>(mapper: (state: State) => Selected): StorePart<Selected>;
 }
-export interface WriteStore<State> extends WriteSource<State> {
+export interface Store<State> extends Source<State> {
   use<Selected = State>(mapper?: (state: State) => Selected): Signal<Selected>;
-  map<Selected>(mapper: (state: State) => Selected): ReadStore<Selected>;
+  map<Selected>(mapper: (state: State) => Selected): StorePart<Selected>;
 }
-export type Store<State> = ReadStore<State> | WriteStore<State>;
-export type { Action, Task, Unit, Command, Disposer } from "chain-store";
+export type { Action, Task, Unit, Disposer, Call } from "chain-store";
 
 export const store = <State>(initialState: State) =>
-  adapt(factory(initialState)) as WriteStore<State>;
+  adapt(factory(initialState)) as Store<State>;
 export { chain } from "chain-store";

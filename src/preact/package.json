@@ -1,12 +1,12 @@
 {
   "name": "@chain-store/preact",
   "description": "Preact adapter for chain-store, a tiny and simple event-based state manager.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "peerDependencies": {
     "preact": ">=10.0.0",
-    "chain-store": "^0.1.0"
+    "chain-store": "^0.1.2"
   },
   "devDependencies": {
-    "chain-store": "^0.1.0"
+    "chain-store": "../../chain-store-0.1.2.tgz"
   }
 }

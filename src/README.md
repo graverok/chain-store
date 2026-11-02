@@ -6,11 +6,11 @@
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
 - Separate adapters for [**React**](https://www.npmjs.com/package/@chain-store/react), [**Preact**](https://www.npmjs.com/package/@chain-store/preact), [**Solid**](https://www.npmjs.com/package/@chain-store/solid), [**Vue**](https://www.npmjs.com/package/@chain-store/vue), and [**Angular**](https://www.npmjs.com/package/@chain-store/angular); built-in support for **Svelte**;
-- Tiny: **2.26 kB** minified, **1.05 kB** gzipped, with zero dependencies.
+- Small: **1.95 kB** minified, **957 bytes** gzipped, with zero dependencies.
 
 
 ```shell
-npm install chain-store @chain-store/vue
+npm install chain-store
 ```
 ---
 
@@ -73,9 +73,7 @@ const buttonAdd = document.querySelector<HTMLButtonElement>("#add-user");
 
 buttonAdd?.addEventListener("click", () => {
   buttonAdd.setAttribute("disabled", "true");
-  addItem()
-    .val()
-    .finally(() => buttonAdd.removeAttribute("disabled"));
+  addItem().finally(() => buttonAdd.removeAttribute("disabled"));
 });
 
 document

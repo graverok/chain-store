@@ -184,35 +184,35 @@ test("store subscription", async () => {
   res = "";
 });
 
-// test("store types", async () => {
-//   const $fn = store(() => handler("s1")("run"));
-//   const $fnm = $fn.map((s) => s);
-//   $fnm.get()();
-//
-//   expect(typeof $fnm.get()).toBe("function");
-//   expect(res).toBe("s1-run");
-//   res = "";
-//
-//   const $num = store(10);
-//   const $numm = $num.map((s) => s);
-//   expect(typeof $numm.get()).toBe("number");
-//
-//   const $arr = store([10]);
-//   const $arrm = $arr.map((s) => s);
-//   expect(Array.isArray($arrm.get())).toBe(true);
-//
-//   const $date = store(new Date());
-//   const $datem = $date.map((s) => s);
-//   expect($datem.get() instanceof Date).toBe(true);
-//   expect(typeof $datem.get()).toBe("object");
-//
-//   const $void = store(undefined);
-//   const $voidm = $void.map((s) => s);
-//   expect($voidm.get()).toBe(undefined);
-//   expect(typeof $voidm.get()).toBe("undefined");
-//
-//   const $null = store(null);
-//   const $nullm = $null.map((s) => s);
-//   expect($nullm.get()).toBe(null);
-//   expect(typeof $nullm.get()).toBe("object");
-// });
+test("store types", async () => {
+  const $fn = store(() => handler("s1")("run"));
+  const $fnm = $fn.map((s) => s);
+  $fnm.get()();
+
+  expect(typeof $fnm.get()).toBe("function");
+  expect(res).toBe("s1-run");
+  res = "";
+
+  const $num = store(10);
+  const $numm = $num.map((s) => s);
+  expect(typeof $numm.get()).toBe("number");
+
+  const $arr = store([10]);
+  const $arrm = $arr.map((s) => s);
+  expect(Array.isArray($arrm.get())).toBe(true);
+
+  const $date = store(new Date());
+  const $datem = $date.map((s) => s);
+  expect($datem.get() instanceof Date).toBe(true);
+  expect(typeof $datem.get()).toBe("object");
+
+  const $void = store(undefined);
+  const $voidm = $void.map((s) => s);
+  expect($voidm.get()).toBe(undefined);
+  expect(typeof $voidm.get()).toBe("undefined");
+
+  const $null = store(null);
+  const $nullm = $null.map((s) => s);
+  expect($nullm.get()).toBe(null);
+  expect(typeof $nullm.get()).toBe("object");
+});

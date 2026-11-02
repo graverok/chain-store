@@ -1,50 +1,13 @@
-import { Action, Task, Command, Disposer } from "./types";
+import { Disposer } from "./types";
 
-export type Match<R = any> = (
-  carrier?: Carrier,
-) => ((respondent: () => R) => void) | void;
-
+export type Resolve<R> = (r: R) => void;
+export type Reject = (e: Error) => void;
+export type Match = (carrier?: Carrier) => boolean;
 export type Queue = (() => void)[];
 export type Carrier<P = any, R = any> = (
   params: P,
-  config: [Queue, Match<R> | void],
+  config: [Queue, [Resolve<R>, Reject] | void, Match | void],
 ) => void;
-
-export type Call<Params, Result extends unknown = void> = (
-  params: Params,
-) => Result;
-
-export type Commands<Input, Output> = {
-  filter: <Fn extends Command<Output, boolean>>(
-    fn: Fn,
-  ) => Action<
-    Input,
-    ReturnType<Fn> extends Promise<unknown>
-      ? Output extends infer U
-        ? Promise<U>
-        : never
-      : Output
-  >;
-  map: <Fn extends Command<Output, unknown>>(
-    fn: Fn,
-  ) => Action<
-    Input,
-    Output extends Promise<unknown>
-      ? ReturnType<Fn> extends infer U
-        ? Promise<U>
-        : never
-      : ReturnType<Fn> extends infer U
-        ? U
-        : never
-  >;
-  task: <Result>(
-    fn: Command<Output, Result>,
-  ) => Task<
-    Input,
-    Output extends Promise<infer U> ? U : Output,
-    Result extends Promise<infer U> ? U : Result
-  >;
-};
 
 export const caller =
   <P>(...args: Parameters<Carrier<P>>) =>
@@ -54,17 +17,16 @@ export const caller =
     next.forEach(() => queue.shift()!());
   };
 
-export const resolver = <P, R>(
-  param: P,
-  fn: (param: P) => Promise<R> | R,
-  resolve: (res: R) => void,
-  reject: (err: Error) => void,
-  mapper = false,
+export const resolver = <T>(
+  param: Promise<T> | T,
+  done: (v: T) => void,
+  fail: (e: Error) => void,
 ) => {
-  const res = fn(param);
-  if (!(res instanceof Promise) || (mapper && param === res))
-    return resolve(res as R);
-  res.then(resolve).catch(reject);
+  if (param instanceof Promise) {
+    param.then(done).catch(fail);
+    return;
+  }
+  return done(param);
 };
 
 export const pusher =
@@ -111,37 +73,3 @@ export const subscriber =
 
     return emitter[0](callback);
   };
-
-export const evaluate = <Result>(sync?: boolean) => {
-  const stored: (() => Result)[] | [(r: Result) => void, (e: Error) => void] =
-    [];
-
-  return [
-    () =>
-      sync
-        ? stored.length
-          ? (stored[0]() as Result)
-          : //@ts-expect-error
-            new Promise<Result>((r, f) => stored.push(r, f))
-        : new Promise<Result>((r, f) => {
-            if (stored.length) {
-              try {
-                return r(stored[0]() as Result);
-              } catch (err) {
-                f(err);
-              }
-              return;
-            }
-            //@ts-expect-error
-            stored.push(r, f);
-          }),
-    (res: () => Result) => {
-      if (!stored.length) return stored.push(res); /* init() -> val() */
-      try {
-        (stored[0] as (r: Result) => void)(res());
-      } catch (err) {
-        (stored[1] as (e: Error) => void)?.(err as Error);
-      }
-    },
-  ];
-};

@@ -97,65 +97,29 @@ test("simultaneous action calls", async () => {
   res = "";
 });
 
-test("action val", async () => {
-  handler("f")(chain<number>()(10).val());
-  expect(res).toBe("f-10");
-  res = "";
-
-  chain<number>()
-    .map(async (n) => n + 5)(10)
-    .val()
-    .then(handler("f"));
-  expect(res).toBe("");
-  await delay(1); // check 1s why delay
-  expect(res).toBe("f-15");
-  res = "";
-
-  chain<number>()
-    .map(async () => {
-      throw new Error("error");
-    })(10)
-    .val()
-    .catch((err) => handler("f")(err.name));
-  expect(res).toBe("");
-  await delay(1);
-  expect(res).toBe(`f-"ChainError"`);
-  res = "";
-
-  try {
-    chain<number>()
-      .filter((n) => n < 0)
-      .map((n) => n)(10)
-      .val();
-  } catch (err) {
-    res = (err as Error).name;
-  }
-
-  expect(res).toBe("ChainFilter");
-  res = "";
-});
-
 test("action function types", async () => {
   const fn1 = chain<unknown>();
+  const fn2 = chain<unknown>();
 
+  let res1 = "";
+  let res2 = "";
   const func = async (r: number) => r;
 
   fn1.watch((data) => {
-    res =
-      typeof data === "function"
-        ? "function"
-        : data instanceof Promise
-          ? "promise"
-          : "";
+    res1 = typeof data;
+  });
+
+  fn2.watch((data) => {
+    console.log(typeof data);
+    res2 = typeof data;
   });
 
   fn1(func);
-  expect(res).toBe("function");
+  fn2(func(10));
 
   await delay();
-
-  fn1(func(10));
-  expect(res).toBe("promise");
+  expect(res1).toBe("function");
+  expect(res2).toBe("number");
 });
 
 test("action promises types", async () => {
@@ -167,7 +131,7 @@ test("action promises types", async () => {
   const act4 = chain().map(async () => promise);
 
   const payload = [promise, 10, promise, void 0];
-  const expected = [promise, 10, "10", 10];
+  const expected = [10, 10, "10", 10];
 
   [act1, act2, act3, act4].forEach((action, index) => {
     action.watch((r) => {

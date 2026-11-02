@@ -5,7 +5,7 @@
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
-- Tiny and dependency-free: **2.70 kB** minified, **1.22 kB** gzipped with the React adapter included.
+- Small and dependency-free: **2.38 kB** minified, **1.12 kB** gzipped with the React adapter included.
 
 
 ```shell

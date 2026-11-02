@@ -6,7 +6,7 @@
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
-- Tiny and dependency-free: **2.71 kB** minified, **1.23 kB** gzipped with the Preact adapter included.
+- Small and dependency-free: **2.39 kB** minified, **1.13 kB** gzipped with the Preact adapter included.
 
 
 
