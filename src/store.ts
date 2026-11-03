@@ -11,9 +11,9 @@ import {
   type Emitter,
   type Queue,
   type Watcher,
-  Resolve,
-  Reject,
-} from "./utils";
+  type Resolve,
+  type Reject,
+} from "./lib";
 
 export const chain = <Input = void>() => createAction<Input, Input>();
 

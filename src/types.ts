@@ -1,4 +1,4 @@
-import { Watcher } from "./utils";
+import { Watcher } from "./lib";
 
 export type Disposer = () => void;
 

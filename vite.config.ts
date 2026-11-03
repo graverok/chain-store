@@ -8,6 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   build: {
     emptyOutDir: true,
+    minify: false,
     lib: {
       entry: {
         ".": resolve(__dirname, "src/index.ts"),
