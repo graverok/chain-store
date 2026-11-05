@@ -56,6 +56,7 @@ export interface StorePart<State> extends Unit<State> {
 }
 
 export interface Store<State> extends StorePart<State> {
+  on<Params extends State, Ext = void>(unit: Unit<Params, Ext>): Store<State>;
   on<Params, Ext = void>(
     unit: Unit<Params, Ext>,
     fn: (state: State, params: Params, ext: Ext) => State,

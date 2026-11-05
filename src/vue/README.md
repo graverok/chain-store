@@ -1,11 +1,11 @@
-## Vue<br/>![chain-store](https://graverok.github.io/chain-store/docs/chain-store-light.svg)
+# @chain-store/vue
 
 **Vue** adapter for [**chain-store**](https://npmjs.com/package/chain-store), a tiny and simple event-based state manager.<br/>
 - Actions with pre-bound chains of filters and mappings;
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
-- Small and dependency-free: **2.41 kB** minified, **1.14 kB** gzipped with the Vue adapter included.
+- Small and dependency-free: **1.16 kB** minified & gzipped with the Vue adapter included.
 
 
 ```shell

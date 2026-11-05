@@ -6,7 +6,7 @@
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
 - Separate adapters for [**React**](https://www.npmjs.com/package/@chain-store/react), [**Preact**](https://www.npmjs.com/package/@chain-store/preact), [**Solid**](https://www.npmjs.com/package/@chain-store/solid), [**Vue**](https://www.npmjs.com/package/@chain-store/vue), and [**Angular**](https://www.npmjs.com/package/@chain-store/angular); built-in support for **Svelte**;
-- Small: **1.95 kB** minified, **957 bytes** gzipped, with zero dependencies.
+- Small: **920 bytes** minified & gzipped, with zero dependencies.
 
 
 ```shell

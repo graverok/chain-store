@@ -24,9 +24,9 @@ export const resolver = <T>(
 ) => {
   if (param instanceof Promise) {
     param.then(done).catch(fail);
-    return;
+  } else {
+    done(param);
   }
-  return done(param);
 };
 
 export const pusher =
@@ -51,25 +51,23 @@ export const awaiter = (fn: () => void) =>
 export type Watcher = (...args: any[]) => void;
 export type Emitter = [((watcher: Watcher) => Disposer) | void, Watcher | void];
 
-export const subscriber =
-  (emitter: Emitter) =>
-  (callback: Watcher): Disposer => {
-    if (emitter[0]) return emitter[0](callback);
+export const subscriber = (emitter: Emitter) => {
+  if (emitter[0]) return emitter[0];
 
-    const subscribers: Watcher[] = [];
+  const subscribers: Watcher[][] = [[], []];
 
-    const subscribe = (watcher: Watcher) =>
-      !subscribers.includes(watcher) && subscribers.push(watcher);
-
-    emitter[0] = (watcher: Watcher) => {
-      subscribe(watcher);
-      return () => {
-        splicer(subscribers, watcher);
-      };
+  emitter[0] = (watcher: Watcher, i = 1) => {
+    !subscribers[i].includes(watcher) && subscribers[i].push(watcher);
+    return () => {
+      splicer(subscribers[i], watcher);
     };
-
-    emitter[1] = (...args: any[]) =>
-      subscribers.forEach((watcher) => watcher(...args));
-
-    return emitter[0](callback);
   };
+
+  emitter[1] = (...args: any[]) => {
+    subscribers.forEach((watchers) =>
+      watchers.forEach((watcher) => watcher(...args)),
+    );
+  };
+
+  return emitter[0];
+};

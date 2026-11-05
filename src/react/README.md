@@ -1,11 +1,11 @@
-## React<br/>![chain-store](https://graverok.github.io/chain-store/docs/chain-store-light.svg)
+# @chain-store/react
 
 **React** adapter for [**chain-store**](https://npmjs.com/package/chain-store), a tiny and simple event-based state manager.<br/>
 - Actions with pre-bound chains of filters and mappings;
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
-- Small and dependency-free: **2.38 kB** minified, **1.12 kB** gzipped with the React adapter included.
+- Small and dependency-free: **1.14 kB** minified & gzipped with the React adapter included.
 
 
 ```shell

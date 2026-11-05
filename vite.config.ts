@@ -9,6 +9,7 @@ export default defineConfig({
   build: {
     emptyOutDir: true,
     minify: false,
+    target: "ES2020",
     lib: {
       entry: {
         ".": resolve(__dirname, "src/index.ts"),

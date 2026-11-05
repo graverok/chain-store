@@ -43,17 +43,18 @@ Object.assign(distPackage, {
     ".": {
       types: "./index.d.ts",
       import: "./index.js",
-      require: "./index.js",
+      require: "./index.cjs",
     },
   },
   files: [
-    "index.js",
+    "chain.d.ts",
     "index.cjs",
     "index.d.ts",
+    "index.js",
+    "lib.d.ts",
+    "README.md",
     "store.d.ts",
     "types.d.ts",
-    "utils.d.ts",
-    "README.md",
   ],
 });
 

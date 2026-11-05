@@ -1,4 +1,4 @@
-## Preact<br/>![chain-store](https://graverok.github.io/chain-store/docs/chain-store-light.svg)
+# @chain-store/preact
 
 
 **Preact** adapter for [**chain-store**](https://npmjs.com/package/chain-store), a simple event-based state manager.<br/>
@@ -6,7 +6,7 @@
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
-- Small and dependency-free: **2.39 kB** minified, **1.13 kB** gzipped with the Preact adapter included.
+- Small and dependency-free: **1.15 kB** minified & gzipped with the Preact adapter included.
 
 
 

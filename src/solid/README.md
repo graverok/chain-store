@@ -1,11 +1,11 @@
-## Solid<br/>![chain-store](https://graverok.github.io/chain-store/docs/chain-store-light.svg)
+# @chain-store/solid
 
 **Solid** adapter for [**chain-store**](https://npmjs.com/package/chain-store), a tiny and simple event-based state manager.<br/>
 - Actions with pre-bound chains of filters and mappings;
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
-- Small and dependency-free: **2.40 kB** minified, **1.14 kB** gzipped with the Solid adapter included.
+- Small and dependency-free: **1.15 kB** minified & gzipped with the Solid adapter included.
 
 
 ```shell
