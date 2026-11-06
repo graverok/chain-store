@@ -6,11 +6,13 @@ export const store = <State>(initialState: State) =>
 
 const createStore = <State, Parent extends unknown | void = void>(
   initialState: State,
-  config?: [Unit<Parent>, (state: Parent) => State],
+  parent?: Unit<Parent>,
+  fn?: (state: Parent) => State,
 ): Parent extends void ? Store<State> : StorePart<State> => {
   let disposers: [Unit, Disposer][] = [];
-  const emitters = [[], []] as unknown as [Emitter, Emitter];
-  const unit = { watch: subscriber(emitters[1]) } as Unit<State>;
+  const em = [] as Emitter;
+  const e2 = [] as Emitter;
+  const unit = { watch: subscriber(e2) } as Unit<State>;
 
   let state = initialState;
 
@@ -20,22 +22,22 @@ const createStore = <State, Parent extends unknown | void = void>(
   const set = (next: State) => {
     const diff = next !== state;
     state = next;
-    diff && emitters[0][1]?.(state);
-    emitters[1][1]?.(state);
+    diff && em[1]?.(state);
+    e2[1]?.(state);
   };
 
-  config?.[0].watch((...args) => set(config[1](args[0] as Parent)));
+  parent?.watch((arg) => set(fn?.(arg) as State));
 
   const store = {
     get: () => state,
-    watch: subscriber(emitters[0]),
+    watch: subscriber(em),
     subscribe: (watcher: Watcher) => {
       watcher(state);
-      return subscriber(emitters[0])(watcher);
+      return subscriber(em)(watcher);
     },
     map: <Selector>(mapper: (state: State) => Selector) =>
-      createStore<Selector, State>(mapper(state), [unit, mapper]),
-    ...(config
+      createStore<Selector, State>(mapper(state), unit, mapper),
+    ...(parent
       ? {}
       : {
           on: <P extends State, X>(

@@ -2,15 +2,14 @@ import { Action, Task } from "./types";
 import {
   splicer,
   subscriber,
-  type Emitter,
-  type Carrier,
   caller,
   resolver,
-  type Queue,
-  type Resolve,
-  type Reject,
   awaiter,
   pusher,
+  type Emitter,
+  type Carrier,
+  type Queue,
+  type Return,
 } from "./lib";
 
 export const chain = <Input = void>() => createAction<Input, Input>();
@@ -24,16 +23,16 @@ const createAction = <Input = void, Output = Input>(
   const emitter = [] as unknown as Emitter;
   const next: Carrier<Output>[] = [];
 
-  const exec: Carrier<Output> = (params, config) => {
+  const exec: Carrier<Output, void> = (params, ...rest) => {
     emitter[1]?.(params);
-    caller<Output>(params, config)(next);
+    caller<Output>(params, ...rest)(next);
   };
 
-  const call: Carrier<Input | Output> = (params, config) => {
+  const call: Carrier<Input | Output> = (params, queue, match) => {
     const catcher = (error?: Error) => {
       let err = error ?? new Error();
       err.name = error ? "ChainError" : "ChainFilter";
-      config[1]?.[1](err);
+      match?.()?.[1](err);
     };
 
     try {
@@ -42,9 +41,9 @@ const createAction = <Input = void, Output = Input>(
         (res) =>
           filter
             ? res
-              ? exec(params as Output, config)
+              ? exec(params as Output, queue, match)
               : catcher()
-            : exec(res as Output, config),
+            : exec(res as Output, queue, match),
         catcher,
       );
     } catch (err) {
@@ -55,7 +54,7 @@ const createAction = <Input = void, Output = Input>(
   propagate?.(call);
 
   const action = (input: Input) => {
-    (start ?? call)(input, [[] as Queue, void 0, void 0]);
+    (start ?? call)(input, [] as Queue);
     return;
   };
 
@@ -70,69 +69,62 @@ const createTask = <Input, Result, Params>(
   propagate: (fn: Carrier<Params>) => void,
   task: (params: Params) => Promise<Result> | Result,
 ) => {
-  const emitters = [[], [], [], []] as unknown as Emitter[];
+  const em = [] as Emitter;
+  const ed = [] as Emitter;
+  const ef = [] as Emitter;
+  const ee = [] as Emitter;
   const pending: Promise<Result>[] = [];
 
-  const exec = async (
-    params: Params,
-    config: [Resolve<Result>, Reject] | void,
-  ) => {
+  const exec = async (params: Params, ret?: Return<Result>) => {
     const promise = task(params);
 
     if (!(promise instanceof Promise)) {
-      emitters[0][1]?.(params);
+      em[1]?.(params);
       return awaiter(() => {
-        emitters[1][1]?.(promise, params);
-        config?.[0](promise);
+        ed[1]?.(promise, params);
+        ret?.[0](promise);
       });
     }
 
     const duplicate = pending.includes(promise);
     !duplicate && pending.push(promise);
-    !duplicate && emitters[0][1]?.(params);
+    !duplicate && em[1]?.(params);
 
     try {
       const result = await promise;
-      !duplicate && emitters[1][1]?.(result, params);
-      config?.[0](result);
+      !duplicate && ed[1]?.(result, params);
+      ret?.[0](result);
     } catch (error) {
-      !duplicate && emitters[2][1]?.(error, params);
-      config?.[1](error as Error);
+      !duplicate && ef[1]?.(error, params);
+      ret?.[1](error as Error);
     } finally {
-      duplicate
-        ? awaiter(() => splicer(pending, promise))
-        : emitters[3][1]?.(params);
+      duplicate ? awaiter(() => splicer(pending, promise)) : ee[1]?.(params);
     }
   };
 
-  const call: Carrier<Params> = (params, config) => {
+  const call: Carrier<Params, Result> = (params, _, match) => {
     try {
-      const match = config[2]?.(call);
-      awaiter(() => exec(params, match ? config[1] : void 0));
+      awaiter(() => exec(params, match?.(call)));
     } catch {}
   };
 
   propagate(call);
 
   const action = (input: Input) => {
-    const config = [] as unknown as [
-      Resolve<Result | PromiseLike<Result>>,
-      Reject,
-    ];
-    const promise = new Promise((resolve, reject) => {
-      config[0] = resolve;
-      config[1] = reject;
-    });
+    const ret = [] as unknown as Return<Result>;
+    const promise = new Promise((resolve, reject) => ret.push(resolve, reject));
     promise.catch(() => void 0);
-    start(input, [[], config, (carrier) => carrier === call]);
+    start(input, [], (carrier) =>
+      !carrier || carrier === call ? ret : void 0,
+    );
     return promise;
   };
 
   return Object.assign(action, {
-    ...createMethods(emitters[0]),
-    done: createMethods(emitters[1]),
-    fail: createMethods(emitters[2]),
-    end: createMethods(emitters[3]),
+    ...createMethods(em),
+    done: createMethods(ed),
+    fail: createMethods(ef),
+    end: createMethods(ee),
   }) as Task<Input, Params, Result>;
 };
 

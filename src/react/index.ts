@@ -53,7 +53,7 @@ export interface Store<State> extends Source<State> {
   ): Store<State>;
   off(unit?: Unit): Store<State>;
 }
-export type { Action, Task, Unit, Disposer, Call } from "chain-store";
+export type { Action, Task, Unit, Disposer, Call } from "../types";
 
 export const store = <State>(initialState: State) =>
   adapt(factory(initialState)) as Store<State>;

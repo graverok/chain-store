@@ -55,3 +55,8 @@ for (let i = 0; i < plugins.length; i++) {
     `${titles[i]}${size.minified} min \t${size.gzipped} gzip \t${size.brotli} brotli`,
   );
 }
+
+const toolSize = await measure(["./dist/tools/index.js"]);
+console.log(
+  `tools:\t  ${toolSize.minified} min \t${toolSize.gzipped} gzip \t${toolSize.brotli} brotli`,
+);

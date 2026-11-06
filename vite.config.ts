@@ -18,6 +18,7 @@ export default defineConfig({
         solid: resolve(__dirname, "src/solid/index.ts"),
         vue: resolve(__dirname, "src/vue/index.ts"),
         angular: resolve(__dirname, "src/angular/index.ts"),
+        tools: resolve(__dirname, "src/tools/index.ts"),
       },
       formats: ["es", "cjs"],
       fileName: (format, entryName) =>

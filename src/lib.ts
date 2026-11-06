@@ -1,18 +1,18 @@
 import { Disposer } from "./types";
 
-export type Resolve<R> = (r: R) => void;
-export type Reject = (e: Error) => void;
-export type Match = (carrier?: Carrier) => boolean;
+export type Return<R> = [(r: R) => void, (e: Error) => void];
+export type Match<R> = (carrier?: Carrier) => Return<R> | undefined;
 export type Queue = (() => void)[];
 export type Carrier<P = any, R = any> = (
   params: P,
-  config: [Queue, [Resolve<R>, Reject] | void, Match | void],
+  queue: Queue,
+  match: Match<R> | void,
 ) => void;
 
 export const caller =
-  <P>(...args: Parameters<Carrier<P>>) =>
-  (next: Carrier<P>[]) => {
-    const queue = args[1][0];
+  <P, R = any>(...args: Parameters<Carrier<P, R>>) =>
+  (next: Carrier<P, R>[]) => {
+    const queue = args[1];
     next.forEach((call) => queue.push(() => call(...args)));
     next.forEach(() => queue.shift()!());
   };
@@ -49,7 +49,8 @@ export const awaiter = (fn: () => void) =>
     .catch(() => {});
 
 export type Watcher = (...args: any[]) => void;
-export type Emitter = [((watcher: Watcher) => Disposer) | void, Watcher | void];
+export type Emitter =
+  [((watcher: Watcher) => Disposer) | void, Watcher | void] | [];
 
 export const subscriber = (emitter: Emitter) => {
   if (emitter[0]) return emitter[0];

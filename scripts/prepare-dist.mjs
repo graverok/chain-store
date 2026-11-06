@@ -65,7 +65,11 @@ await writeFile(
 
 for (const file of ["LICENSE"]) {
   try {
-    for (const dist of ["dist", ...plugins.map((plugin) => `dist/${plugin}`)]) {
+    for (const dist of [
+      "dist",
+      "dist/tools",
+      ...plugins.map((plugin) => `dist/${plugin}`),
+    ]) {
       await copyFile(
         new URL(`../${file}`, import.meta.url),
         new URL(`../${dist}/${file}`, import.meta.url),
@@ -76,7 +80,13 @@ for (const file of ["LICENSE"]) {
   }
 }
 
-for (const src of ["", ...plugins.map((plugin) => `/${plugin}`)]) {
+for (const src of [
+  "",
+  "/tools",
+  "/tools/sync",
+  "tools/debug",
+  ...plugins.map((plugin) => `/${plugin}`),
+]) {
   try {
     await copyFile(
       new URL(`../src${src}/README.md`, import.meta.url),
@@ -124,3 +134,47 @@ for (const plugin of plugins) {
     if (error.code !== "ENOENT") throw error;
   }
 }
+
+try {
+  let toolsPackage = JSON.parse(
+    await readFile(
+      new URL(`../src/tools/package.json`, import.meta.url),
+      "utf8",
+    ),
+  );
+
+  toolsPackage = Object.fromEntries(
+    fieldsToKeep
+      .filter((key) => toolsPackage[key] !== undefined)
+      .map((key) => [key, toolsPackage[key]]),
+  );
+
+  const content = {
+    ...toolsPackage,
+    sideEffects: "false",
+    type: "module",
+    main: "./index.cjs",
+    module: "./index.js",
+    types: "./index.d.ts",
+    exports: {
+      ".": {
+        types: "./index.d.ts",
+        import: "./index.js",
+        require: "./index.cjs",
+      },
+    },
+    files: [
+      "debug",
+      "sync",
+      "index.cjs",
+      "index.d.ts",
+      "index.js",
+      "README.md",
+    ],
+  };
+
+  await writeFile(
+    new URL(`../dist/tools/package.json`, import.meta.url),
+    `${JSON.stringify(content, null, 2)}\n`,
+  );
+} catch {}

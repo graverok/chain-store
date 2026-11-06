@@ -1,7 +1,7 @@
 {
   "name": "chain-store",
   "description": "Tiny and simple dependency-free state manager with event-driven stores, extensible action chains, and async workflows.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "author": {
     "name": "Aleksandr Gurianov",
     "url": "http://golova.pro"
@@ -49,6 +49,7 @@
     "vue": "3.3.0"
   },
   "scripts": {
+    "build-core-dev": "tsc --noEmit && vitest --run  && vite build -c vite.config.core.ts && node scripts/prepare-core-dev.mjs && npm pack ./dist",
     "build": "tsc --noEmit && vitest --run && vite build && node scripts/prepare-dist.mjs",
     "sizes": "node scripts/adapter-sizes.mjs",
     "test": "vitest"
