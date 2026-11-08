@@ -14,15 +14,17 @@ const adapt = <State>($store: SourcePart<State> | Source<State>) => {
       mapper?: (state: State) => Selected,
     ): Signal<Selected> {
       const destroyRef = inject(DestroyRef);
-      const state = signal(
-        mapper ? mapper($store.get()) : ($store.get() as unknown as Selected),
-      );
+      const $part = mapper ? $store.map(mapper) : $store;
+      const state = signal($part.get() as unknown as Selected);
 
-      destroyRef.onDestroy(
-        (mapper ? $store.map(mapper) : $store).subscribe((value: Selected) => {
-          state.set(value as Selected);
-        }),
-      );
+      const disposers = [
+        $part.subscribe((value: Selected | State) =>
+          state.set(value as Selected),
+        ),
+        mapper && $part.off,
+      ];
+
+      destroyRef.onDestroy(() => disposers.forEach((d) => d?.()));
 
       return state.asReadonly();
     },

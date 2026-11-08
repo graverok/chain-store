@@ -31,10 +31,10 @@ export const task: Task<number | void, number, string[]> = action.task(
 
 $store
   .on(action, (state: State, page: number) => ({ ...state, page }))
-  .on(task.done, (state: State, data: string[], page: number) => ({
-    ...state,
-    data: { ...state.data, [page]: data },
-  }));
+  .on(task.done, (state: State, data: string[], page: number) => {
+    state.data[page] = data; /* Supports mutations */
+    return state;
+  });
 ```
 
 ```tsx
@@ -45,13 +45,10 @@ import { $store, action, type State } from "./store";
 export const App = () => {
   const page: number = $store.use((state) => state.page);
   const data: string[] = $store.use(
-    (state: State) => state.data[page()] ?? [],
-    [page],
+    (state: State) => state.data[page()] ?? []
   );
-
-  createEffect(() => {
-    action();
-  });
+  
+  action();
 
   return (
     <>

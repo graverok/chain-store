@@ -31,24 +31,23 @@ export const task: Task<number | void, number, string[]> = action.task(
 
 $store
   .on(action, (state: State, page: number) => ({ ...state, page }))
-  .on(task.done, (state: State, data: string[], page: number) => ({
-    ...state,
-    data: { ...state.data, [page]: data },
-  }));
+  .on(task.done, (state: State, data: string[], page: number) => {
+    state.data[page] = data; /* Supports mutations */
+    return state;
+  });
 ```
 
 ```vue
 <!-- app.vue-->
 <script setup lang="ts">
   import { $store, action, type State } from "./store";
-
-  action();
-
+  
   const page = $store.use((state: State) => state.page);
   const data = $store.use(
-      (state: State) => state.data[page.value] ?? [],
-      [() => page]
+    (state: State) => state.data[page.value] ?? []
   );
+
+  action();
 </script>
 
 <template>

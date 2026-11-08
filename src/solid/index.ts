@@ -11,16 +11,18 @@ const adapt = <State>($store: Source<State> | SourcePart<State>) => {
 
   return Object.assign($store, {
     use<Selected = State>(mapper?: (state: State) => Selected) {
-      const [state, setState] = createSignal<Selected>(
-        (mapper ? mapper($store.get()) : $store.get()) as Selected,
-      );
+      const $part = mapper ? $store.map(mapper) : $store;
+      const [state, setState] = createSignal<Selected>($part.get() as Selected);
 
       createEffect(() => {
-        onCleanup(
-          (mapper ? $store.map(mapper) : $store).subscribe(
-            (value: Selected | State) => setState(() => value as Selected),
+        const disposers = [
+          $part.subscribe((value: Selected | State) =>
+            setState(() => value as Selected),
           ),
-        );
+          mapper && $part.off,
+        ];
+
+        onCleanup(() => disposers.forEach((d) => d?.()));
       });
 
       return state;

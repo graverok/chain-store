@@ -26,7 +26,7 @@ const createStore = <State, Parent extends unknown | void = void>(
     e2[1]?.(state);
   };
 
-  parent?.watch((arg) => set(fn?.(arg) as State));
+  const dispose = parent?.watch((arg) => set(fn?.(arg) as State));
 
   const store = {
     get: () => state,
@@ -38,7 +38,9 @@ const createStore = <State, Parent extends unknown | void = void>(
     map: <Selector>(mapper: (state: State) => Selector) =>
       createStore<Selector, State>(mapper(state), unit, mapper),
     ...(parent
-      ? {}
+      ? {
+          off: dispose as () => void,
+        }
       : {
           on: <P extends State, X>(
             unit: Unit<P, X>,

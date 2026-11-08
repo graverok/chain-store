@@ -9,14 +9,6 @@ export type Carrier<P = any, R = any> = (
   match: Match<R> | void,
 ) => void;
 
-export const caller =
-  <P, R = any>(...args: Parameters<Carrier<P, R>>) =>
-  (next: Carrier<P, R>[]) => {
-    const queue = args[1];
-    next.forEach((call) => queue.push(() => call(...args)));
-    next.forEach(() => queue.shift()!());
-  };
-
 export const resolver = <T>(
   param: Promise<T> | T,
   done: (v: T) => void,
@@ -27,6 +19,12 @@ export const resolver = <T>(
   } else {
     done(param);
   }
+};
+
+export const catcher = (match?: Match<any> | void) => (error?: Error) => {
+  let err = error ?? new Error();
+  err.name = error ? "ChainError" : "ChainFilter";
+  match?.()?.[1](err);
 };
 
 export const pusher =

@@ -3,10 +3,10 @@
   "description": "React adapter for chain-store, a tiny and simple event-based state manager.",
   "version": "0.0.3",
   "peerDependencies": {
-    "react": ">=16.8.0",
-    "chain-store": "^0.1.3"
+    "chain-store": "^0.1.3",
+    "react": ">=16.8.0"
   },
   "devDependencies": {
-    "chain-store": "../../chain-store-0.1.3-dev.tgz"
+    "chain-store": "../../chain-store-0.1.3-s1-dev.tgz"
   }
 }

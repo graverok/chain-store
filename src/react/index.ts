@@ -18,13 +18,16 @@ const adapt = <State>($store: SourcePart<State> | Source<State>) => {
         (mapper ? mapper($store.get()) : $store.get()) as Selected,
       );
 
-      useEffect(
-        () =>
-          (mapper ? $store.map(mapper) : $store).subscribe(
-            (value: Selected | State) => setState(() => value as Selected),
-          ),
-        deps,
-      );
+      useEffect(() => {
+        const $part = mapper ? $store.map(mapper) : $store;
+        const disposers = [
+          $part.subscribe((value: Selected | State) => {
+            setState(() => value as Selected);
+          }),
+          mapper && $part.off,
+        ];
+        return () => disposers.forEach((d) => d?.());
+      }, deps);
 
       return state;
     },

@@ -53,6 +53,7 @@ export interface StorePart<State> extends Unit<State> {
   get(): State;
   map<Selected>(mapper: (state: State) => Selected): StorePart<Selected>;
   subscribe(watcher: Watcher): Disposer;
+  off: Disposer;
 }
 
 export interface Store<State> extends StorePart<State> {

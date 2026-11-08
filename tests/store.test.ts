@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { chain, store } from "../src";
 import { delay, mapper } from "./utils";
 
@@ -215,4 +215,17 @@ test("store types", async () => {
   const $nullm = $null.map((s) => s);
   expect($nullm.get()).toBe(null);
   expect(typeof $nullm.get()).toBe("object");
+});
+
+test("part stores", async () => {
+  const $store = store({ name: "aleks" });
+
+  const mapper = vi.fn((user: { name: string }) => user.name);
+  const $name = $store.map(mapper);
+  expect(mapper).toHaveBeenCalledTimes(1);
+  $store.set({ name: "joe" });
+  expect(mapper).toHaveBeenCalledTimes(2);
+  $name.off();
+  $store.set({ name: "john" });
+  expect(mapper).toHaveBeenCalledTimes(2);
 });

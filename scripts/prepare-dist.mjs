@@ -35,6 +35,7 @@ const keywords = distPackage.keywords;
 
 Object.assign(distPackage, {
   keywords: [...keywords, ...plugins],
+  sideEffects: false,
   type: "module",
   main: "./index.cjs",
   module: "./index.js",
@@ -151,7 +152,7 @@ try {
 
   const content = {
     ...toolsPackage,
-    sideEffects: "false",
+    sideEffects: false,
     type: "module",
     main: "./index.cjs",
     module: "./index.js",
@@ -163,14 +164,7 @@ try {
         require: "./index.cjs",
       },
     },
-    files: [
-      "debug",
-      "sync",
-      "index.cjs",
-      "index.d.ts",
-      "index.js",
-      "README.md",
-    ],
+    files: ["log", "sync", "index.cjs", "index.d.ts", "index.js", "README.md"],
   };
 
   await writeFile(

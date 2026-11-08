@@ -1,11 +1,11 @@
 import { Action, Task } from "./types";
 import {
+  awaiter,
+  catcher,
+  pusher,
+  resolver,
   splicer,
   subscriber,
-  caller,
-  resolver,
-  awaiter,
-  pusher,
   type Emitter,
   type Carrier,
   type Queue,
@@ -23,18 +23,13 @@ const createAction = <Input = void, Output = Input>(
   const emitter = [] as unknown as Emitter;
   const next: Carrier<Output>[] = [];
 
-  const exec: Carrier<Output, void> = (params, ...rest) => {
-    emitter[1]?.(params);
-    caller<Output>(params, ...rest)(next);
+  const exec: Carrier<Output, void> = (...args) => {
+    emitter[1]?.(args[0]);
+    next.forEach((call) => args[1].push(() => call(...args)));
+    next.forEach(() => args[1].shift()!());
   };
 
   const call: Carrier<Input | Output> = (params, queue, match) => {
-    const catcher = (error?: Error) => {
-      let err = error ?? new Error();
-      err.name = error ? "ChainError" : "ChainFilter";
-      match?.()?.[1](err);
-    };
-
     try {
       return resolver(
         filter?.(params) ?? map?.(params) ?? params,
@@ -42,12 +37,12 @@ const createAction = <Input = void, Output = Input>(
           filter
             ? res
               ? exec(params as Output, queue, match)
-              : catcher()
+              : catcher(match)()
             : exec(res as Output, queue, match),
-        catcher,
+        catcher(match),
       );
     } catch (err) {
-      catcher(err as Error);
+      catcher(match)(err as Error);
     }
   };
 

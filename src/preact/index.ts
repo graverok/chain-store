@@ -18,13 +18,16 @@ const adapt = <State>($store: SourcePart<State> | Source<State>) => {
         (mapper ? mapper($store.get()) : $store.get()) as Selected,
       );
 
-      useEffect(
-        () =>
-          (mapper ? $store.map(mapper) : $store).subscribe(
-            (value: Selected | State) => setState(() => value as Selected),
+      useEffect(() => {
+        const $part = mapper ? $store.map(mapper) : $store;
+        const disposers = [
+          $part.subscribe((value: Selected | State) =>
+            setState(() => value as Selected),
           ),
-        deps,
-      );
+          mapper && $part.off,
+        ];
+        return () => disposers.forEach((d) => d?.());
+      }, deps);
 
       return state;
     },
@@ -55,6 +58,6 @@ export interface Store<State> extends Source<State> {
 }
 export type { Action, Task, Unit, Disposer, Call } from "chain-store";
 
-export { chain } from "chain-store";
 export const store = <State>(initialState: State) =>
   adapt(factory(initialState)) as Store<State>;
+export { chain } from "chain-store";

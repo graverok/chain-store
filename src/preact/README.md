@@ -33,10 +33,10 @@ export const task: Task<number | void, number, string[]> = action.task(
 
 $store
   .on(action, (state: State, page: number) => ({ ...state, page }))
-  .on(task.done, (state: State, data: string[], page: number) => ({
-    ...state,
-    data: { ...state.data, [page]: data },
-  }));
+  .on(task.done, (state: State, data: string[], page: number) => {
+    state.data[page] = data; /* Supports mutations */
+    return state;
+  });
 ```
 
 ```tsx
