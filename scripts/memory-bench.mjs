@@ -6,35 +6,35 @@ const save = () => {
   return process.memoryUsage().heapUsed;
 };
 
-const basics = [];
-const mappers = [];
+const chains = [];
+const maps = [];
 const tasks = [];
 
-globalThis.__benchKeepAlive = { basics, mappers, tasks };
+globalThis.__benchKeepAlive = { basics: chains, mappers: maps, tasks };
 const mapper = (n) => n + 2;
 
 let before = save();
 
 for (let i = 0; i < COUNT; i++) {
-  basics.push(chain());
+  chains.push(chain());
 }
-const base = save() - before;
+const mem_chains = save() - before;
 
 for (let i = 0; i < COUNT; i++) {
-  mappers.push(chain().map(mapper));
+  maps.push(chain().map(mapper));
 }
-const mapped = save() - base;
+const mem_maps = save() - mem_chains;
 
 for (let i = 0; i < COUNT; i++) {
   tasks.push(chain().task(mapper));
 }
-const task = save() - mapped;
+const meme_tasks = save() - mem_maps;
 
 delete globalThis.__benchKeepAlive;
 
 console.log(
-  `base: ${Math.round(base / COUNT)}`,
-  `\tchain cost: ${Math.round((mapped - base) / COUNT)}`,
-  `\ttask cost: ${Math.round((task - base) / COUNT)}`,
+  `base: ${Math.round(mem_chains / COUNT)}`,
+  `\tchain cost: ${Math.round((mem_maps - mem_chains) / COUNT)}`,
+  `\ttask cost: ${Math.round((meme_tasks - mem_chains) / COUNT)}`,
 );
 console.log(" ");

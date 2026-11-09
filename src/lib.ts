@@ -1,13 +1,29 @@
 import { Disposer } from "./types";
 
 export type Return<R> = [(r: R) => void, (e: Error) => void];
-export type Match<R> = (carrier?: Carrier) => Return<R> | undefined;
 export type Queue = (() => void)[];
-export type Carrier<P = any, R = any> = (
+export type Carrier<P = any> = (
   params: P,
   queue: Queue,
-  match: Match<R> | void,
+  match?: (params: any, ret?: Return<any>) => void,
+  ret?: Return<any>,
+  cmd?: Command,
 ) => void;
+
+export type Command =
+  | [(params: any, ret?: Return<any>) => void]
+  | [void, Emitter, Command[]]
+  | [
+      void,
+      Emitter,
+      Command[],
+      void | ((params: any) => Promise<any> | any),
+      void | ((params: any) => Promise<boolean> | boolean),
+    ];
+
+export type Watcher = (...args: any[]) => void;
+export type Emitter =
+  [((watcher: Watcher) => Disposer) | void, Watcher | void] | [];
 
 export const resolver = <T>(
   param: Promise<T> | T,
@@ -19,12 +35,6 @@ export const resolver = <T>(
   } else {
     done(param);
   }
-};
-
-export const catcher = (match?: Match<any> | void) => (error?: Error) => {
-  let err = error ?? new Error();
-  err.name = error ? "ChainError" : "ChainFilter";
-  match?.()?.[1](err);
 };
 
 export const pusher =
@@ -45,10 +55,6 @@ export const awaiter = (fn: () => void) =>
   Promise.resolve()
     .then(fn)
     .catch(() => {});
-
-export type Watcher = (...args: any[]) => void;
-export type Emitter =
-  [((watcher: Watcher) => Disposer) | void, Watcher | void] | [];
 
 export const subscriber = (emitter: Emitter) =>
   emitter[0] ??
