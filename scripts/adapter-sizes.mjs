@@ -60,3 +60,5 @@ const toolSize = await measure(["./dist/tools/index.js"]);
 console.log(
   `tools:\t  ${toolSize.minified} min \t${toolSize.gzipped} gzip \t${toolSize.brotli} brotli`,
 );
+
+console.log(" ");

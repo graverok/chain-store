@@ -14,6 +14,7 @@
   "bugs": {
     "url": "https://github.com/graverok/chain-store/issues"
   },
+  "type": "module",
   "license": "MIT",
   "keywords": [
     "state-management",
@@ -50,7 +51,7 @@
   "scripts": {
     "build-core-dev": "tsc --noEmit && vitest --run  && vite build -c vite.config.core.ts && node scripts/prepare-core-dev.mjs && npm pack ./dist",
     "build": "tsc --noEmit && vitest --run && vite build && node scripts/prepare-dist.mjs",
-    "sizes": "node scripts/adapter-sizes.mjs",
+    "size": "vite build -l silend && node scripts/adapter-sizes.mjs && node --expose-gc ./scripts/memory-bench.mjs",
     "test": "vitest"
   }
 }
