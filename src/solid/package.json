@@ -1,7 +1,9 @@
 {
   "name": "@chain-store/solid",
-  "description": "Solid adapter for chain-store, a tiny and simple event-based state manager.",
+  "description": "Solid adapter for chain-store, a tiny yet surprisingly powerful event-based state manager.",
   "version": "0.0.3",
+  "type": "module",
+  "sideEffects": false,
   "peerDependencies": {
     "chain-store": "^0.1.3",
     "solid": "^1.0.0"

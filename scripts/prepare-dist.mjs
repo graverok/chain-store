@@ -17,11 +17,12 @@ const fieldsToKeep = [
   "funding",
   "engines",
   "publishConfig",
+  "sideEffects",
+  "type",
   "dependencies",
   "peerDependencies",
   "peerDependenciesMeta",
   "optionalDependencies",
-  "sideEffects",
 ];
 
 const distPackage = Object.fromEntries(
@@ -31,38 +32,6 @@ const distPackage = Object.fromEntries(
 );
 
 const plugins = ["react", "preact", "solid", "vue", "angular"];
-const keywords = distPackage.keywords;
-
-Object.assign(distPackage, {
-  keywords: [...keywords, ...plugins],
-  sideEffects: false,
-  type: "module",
-  main: "./index.cjs",
-  module: "./index.js",
-  types: "./index.d.ts",
-  exports: {
-    ".": {
-      types: "./index.d.ts",
-      import: "./index.js",
-      require: "./index.cjs",
-    },
-  },
-  files: [
-    "chain.d.ts",
-    "index.cjs",
-    "index.d.ts",
-    "index.js",
-    "lib.d.ts",
-    "README.md",
-    "store.d.ts",
-    "types.d.ts",
-  ],
-});
-
-await writeFile(
-  new URL("../dist/package.json", import.meta.url),
-  `${JSON.stringify(distPackage, null, 2)}\n`,
-);
 
 for (const file of ["LICENSE"]) {
   try {
@@ -81,23 +50,37 @@ for (const file of ["LICENSE"]) {
   }
 }
 
-for (const src of [
-  "",
-  "/tools",
-  "/tools/sync",
-  "tools/debug",
-  ...plugins.map((plugin) => `/${plugin}`),
-]) {
+for (const src of ["", "/tools", ...plugins.map((plugin) => `/${plugin}`)]) {
+  const replacements = [
+    [
+      /(?<!\[)\*\*chain-store\*\*/g,
+      "[**chain-store**](https://npmjs.com/package/chain-store)",
+    ],
+    [
+      /(?<!\[)\*\*Tools\*\*/g,
+      "[**Tools**](https://www.npmjs.com/package/@chain-store/tools)",
+    ],
+  ];
+
   try {
-    await copyFile(
+    let readme = await readFile(
       new URL(`../src${src}/README.md`, import.meta.url),
+      "utf8",
+    );
+    readme = readme.replace(replacements[0][0], replacements[0][1]);
+    src !== "/tools" &&
+      (readme = readme.replace(replacements[1][0], replacements[1][1]));
+    await writeFile(
       new URL(`../dist${src}/README.md`, import.meta.url),
+      readme,
+      "utf8",
     );
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
 }
 
+const keywords = distPackage.keywords;
 for (const plugin of plugins) {
   try {
     let adapterPackage = JSON.parse(
@@ -115,8 +98,8 @@ for (const plugin of plugins) {
 
     const content = {
       ...distPackage,
-      keywords: [...keywords, plugin],
       ...adapterPackage,
+      keywords: [...keywords, plugin],
       exports: {
         ".": {
           types: "./index.d.ts",
@@ -151,9 +134,8 @@ try {
   );
 
   const content = {
+    ...distPackage,
     ...toolsPackage,
-    sideEffects: false,
-    type: "module",
     main: "./index.cjs",
     module: "./index.js",
     types: "./index.d.ts",
@@ -172,3 +154,32 @@ try {
     `${JSON.stringify(content, null, 2)}\n`,
   );
 } catch {}
+
+Object.assign(distPackage, {
+  keywords: [...distPackage.keywords, ...plugins],
+  main: "./index.cjs",
+  module: "./index.js",
+  types: "./index.d.ts",
+  exports: {
+    ".": {
+      types: "./index.d.ts",
+      import: "./index.js",
+      require: "./index.cjs",
+    },
+  },
+  files: [
+    "chain.d.ts",
+    "index.cjs",
+    "index.d.ts",
+    "index.js",
+    "lib.d.ts",
+    "README.md",
+    "store.d.ts",
+    "types.d.ts",
+  ],
+});
+
+await writeFile(
+  new URL("../dist/package.json", import.meta.url),
+  `${JSON.stringify(distPackage, null, 2)}\n`,
+);

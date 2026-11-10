@@ -1,7 +1,9 @@
 {
   "name": "@chain-store/angular",
-  "description": "Angular adapter for chain-store, a tiny and simple event-based state manager.",
+  "description": "Angular adapter for chain-store, a tiny yet surprisingly powerful event-based state manager.",
   "version": "0.0.3",
+  "type": "module",
+  "sideEffects": false,
   "peerDependencies": {
     "@angular/core": ">=16.0.0",
     "chain-store": "^0.1.3"

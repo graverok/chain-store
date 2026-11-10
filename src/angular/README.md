@@ -1,12 +1,12 @@
 # @chain-store/angular
 
-**Angular** adapter for [**chain-store**](https://npmjs.com/package/chain-store), a tiny yet surprisingly powerful event-based state manager.<br/>
+**Angular** adapter for **chain-store**, a tiny yet surprisingly powerful event-based state manager.<br/>
 - Actions with pre-bound chains of filters and mappings;
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
 - Small and dependency-free: **1.04 kB** minified & brotlied with the Angular adapter included.
-- [**Tools**](https://www.npmjs.com/package/@chain-store/tools) to **sync** stores across tabs and **log** state changes to Redux DevTools.
+- **Tools** to **sync** stores across tabs and **log** state changes to Redux DevTools.
 
 
 ```shell

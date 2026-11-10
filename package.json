@@ -14,7 +14,6 @@
   "bugs": {
     "url": "https://github.com/graverok/chain-store/issues"
   },
-  "type": "module",
   "license": "MIT",
   "keywords": [
     "state-management",
@@ -29,6 +28,8 @@
     "zero-dependencies",
     "chain-store"
   ],
+  "type": "module",
+  "sideEffects": false,
   "devDependencies": {
     "@angular/core": "^16.0.0",
     "@babel/core": "^7.2.2",
@@ -51,7 +52,7 @@
   "scripts": {
     "build-core-dev": "tsc --noEmit && vitest --run  && vite build -c vite.config.core.ts && node scripts/prepare-core-dev.mjs && npm pack ./dist",
     "build": "tsc --noEmit && vitest --run && vite build && node scripts/prepare-dist.mjs",
-    "size": "node scripts/adapter-sizes.mjs && node --expose-gc ./scripts/memory-bench.mjs",
+    "size": "node scripts/build-sizes.mjs && node --expose-gc ./scripts/memory-bench.mjs",
     "test": "vitest"
   }
 }

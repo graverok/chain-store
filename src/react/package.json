@@ -1,7 +1,9 @@
 {
   "name": "@chain-store/react",
-  "description": "React adapter for chain-store, a tiny and simple event-based state manager.",
+  "description": "React adapter for chain-store, a tiny yet surprisingly powerful event-based state manager.",
   "version": "0.0.3",
+  "type": "module",
+  "sideEffects": false,
   "peerDependencies": {
     "chain-store": "^0.1.3",
     "react": ">=16.8.0"

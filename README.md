@@ -1,4 +1,3 @@
-####  
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./docs/chain-store-dark.svg?sanitize=true"/>
   <img src="./docs/chain-store-light.svg?sanitize=true#gh-light-mode" />
@@ -657,7 +656,7 @@ const $cart = store({ items: [] });
 sync({ $profile, $cart });
 ```
 
-[**Full specs**](https://github.com/graverok/chain-store/src/tools/sync)
+[**Full specs**](https://github.com/graverok/chain-store/src/tools#sync)
 
 ---
 
@@ -675,4 +674,4 @@ const $store = store(...).on(action, () => {...});
 log({ $store }, { action });
 ```
 
-[**Full specs**](https://github.com/graverok/chain-store/src/tools/log)
+[**Full specs**](https://github.com/graverok/chain-store/src/tools#log)

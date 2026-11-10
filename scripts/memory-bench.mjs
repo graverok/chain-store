@@ -32,9 +32,8 @@ const meme_tasks = save() - mem_maps;
 
 delete globalThis.__benchKeepAlive;
 
+console.log("--------------------------------------------------------");
 console.log(
-  `base: ${Math.round(mem_chains / COUNT)}`,
-  `\tchain cost: ${Math.round((mem_maps - mem_chains) / COUNT)}`,
-  `\ttask cost: ${Math.round((meme_tasks - mem_chains) / COUNT)}`,
+  `memory:\t  chain(${Math.round(mem_chains / COUNT)}).map(${Math.round((mem_maps - mem_chains) / COUNT)}).task(${Math.round((meme_tasks - mem_chains) / COUNT)})`,
 );
-console.log(" ");
+console.log("--------------------------------------------------------");

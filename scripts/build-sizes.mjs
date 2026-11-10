@@ -45,6 +45,7 @@ const titles = [
 ];
 
 const coreSize = await measure([core]);
+console.log("--------------------------------------------------------");
 console.log(
   `core:\t  ${coreSize.minified} min \t${coreSize.gzipped} gzip \t${coreSize.brotli} brotli`,
 );
@@ -60,5 +61,3 @@ const toolSize = await measure(["./dist/tools/index.js"]);
 console.log(
   `tools:\t  ${toolSize.minified} min \t${toolSize.gzipped} gzip \t${toolSize.brotli} brotli`,
 );
-
-console.log(" ");

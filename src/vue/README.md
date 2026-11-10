@@ -1,6 +1,6 @@
 # @chain-store/vue
 
-**Vue** adapter for [**chain-store**](https://npmjs.com/package/chain-store), a tiny yet surprisingly powerful event-based state manager.<br/>
+**Vue** adapter for **chain-store**, a tiny yet surprisingly powerful event-based state manager.<br/>
 - Actions with pre-bound chains of filters and mappings;
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
