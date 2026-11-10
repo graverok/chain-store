@@ -5,14 +5,14 @@
 </picture>
 
 
-#### A tiny, simple event-based state manager.
+#### Event-based state manager.<br/>Tiny in size. Big on capabilities.
 - Actions with pre-bound chains of filters and mappings;
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
-- Separate adapters for [**React**](https://www.npmjs.com/package/@chain-store/react), [**Preact**](https://www.npmjs.com/package/@chain-store/preact), [**Solid**](https://www.npmjs.com/package/@chain-store/solid), [**Vue**](https://www.npmjs.com/package/@chain-store/vue), and [**Angular**](https://www.npmjs.com/package/@chain-store/angular); built-in support for **Svelte**;
-- Small: **920 bytes** minified & gzipped, with zero dependencies.
-- Tools to **sync** stores between tabs and **debug** with Redux DevTools.
+- Separate adapters for **React**, **Preact**, **Solid**, **Vue**, and **Angular**; built-in support for **Svelte**;
+- Small: **816 bytes** minified & brotlied, with zero dependencies.
+- Tools to **sync** stores across tabs and **log** state changes to Redux DevTools.
 
 
 ### Installation
@@ -29,10 +29,11 @@ npm install chain-store
 - **Adapters**:  [React/Preact](#react-preact)  •  [Solid](#solid)  •  [Vue](#vue)  •  [Svelte](#svelte)  •  [Angular](#angular)<br/>
 - [**Chain life cycle**](#chain-life-cycle)<br/>
 - [**Types summary**](#types-summary)<br/>
+- [**Tools**](#tools)<br/>
 
 <br/>
 
-# Action
+## Action
 
 An **action** takes an `Input` and emits an `Output` through a chain of commands. A chain supports three types of commands:
 
@@ -42,8 +43,6 @@ An **action** takes an `Input` and emits an `Output` through a chain of commands
 
 ```ts
 import { chain, type Action, type Task } from "chain-store";
-
-const PAGE_SIZE = 20;
 
 /** Create an action */
 const testAction: Action<number, string> = chain<number>()
@@ -104,7 +103,7 @@ action.watch((result: string) => {...})
 
 <br/>
 
-# Task
+## Task
 
 Tasks are the logical endpoints of chains and are designed for business logic.
 When called, a task emits its input parameters. It also emits a success or failure
@@ -175,7 +174,7 @@ task(0)
 
 <br/>
 
-# Store
+## Store
 
 Stores are small and granular. They can hold any type of data—objects, arrays,
 functions, or anything else. No changes happen behind the scenes; you control
@@ -551,9 +550,6 @@ const act2 = act1.map(() => $store.get());  /* returns act1 output value */
 
 Commands run synchronously, except for tasks. Tasks start after a promise delay (`Promise.resolve().then(...)`), so they run after all actions in the chain have executed. This does not apply to asynchronous `.map` and `.filter` commands.
 
-
-
-
 <br/>
 
 ## Types summary
@@ -566,7 +562,6 @@ Commands run synchronously, except for tasks. Tasks start after a promise delay 
 - **watch**:`(fn: (param: Param, ext: Ext) => void): Disposer`<br/>
   Subscribes `fn` to the unit's emitter and returns a `Disposer`: a void function
   that removes the subscription.
-
 
 ---
 ### Action`<Input, Output>`<br/>
@@ -641,3 +636,43 @@ Commands run synchronously, except for tasks. Tasks start after a promise delay 
 - **subscribe**:`(fn: (state: State) => void): Disposer`<br/>
   Like `Unit.watch`,  but immediately invokes the callback with the current state value.
 
+<br/>
+
+## Tools
+
+```shell
+npm install @chain-store/tools
+```
+
+### sync
+Synchronizes stores across browser tabs using `BroadcastChannel`.
+
+```ts
+import { store } from "chain-store";
+import { sync } from "@chains-store/tools";
+
+const $profile = store({ name: "Ada" });
+const $cart = store({ items: [] });
+
+sync({ $profile, $cart });
+```
+
+[**Full specs**](https://github.com/graverok/chain-store/src/tools/sync)
+
+---
+
+### log
+Log chain emissions and store updates to Redux DevTools
+
+
+```ts
+import { chain, store } from "chain-store";
+import { log } from "@chain-store/tools";
+
+const action = chain();
+const $store = store(...).on(action, () => {...});
+
+log({ $store }, { action });
+```
+
+[**Full specs**](https://github.com/graverok/chain-store/src/tools/log)

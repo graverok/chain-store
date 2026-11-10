@@ -1,11 +1,12 @@
 # @chain-store/react
 
-**React** adapter for [**chain-store**](https://npmjs.com/package/chain-store), a tiny and simple event-based state manager.<br/>
+**React** adapter for [**chain-store**](https://npmjs.com/package/chain-store), a tiny yet surprisingly powerful event-based state manager.<br/>
 - Actions with pre-bound chains of filters and mappings;
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
-- Small and dependency-free: **1.14 kB** minified & gzipped with the React adapter included.
+- Small and dependency-free: **1.03 kB** minified & brotlied with the React adapter included.
+- [**Tools**](https://www.npmjs.com/package/@chain-store/tools) to **sync** stores across tabs and **log** state changes to Redux DevTools.
 
 
 ```shell

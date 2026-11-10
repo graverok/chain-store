@@ -1,18 +1,23 @@
 # @chain-store/tools
 
-**Tools**  for [**chain-store**](https://npmjs.com/package/chain-store), a tiny and simple event-based state manager.<br/>
+**Tools** for **chain-store**, a tiny (816 bytes) yet surprisingly powerful event-based state manager.<br/>
 
 ```shell
 npm install chain-store @chain-store/tools
 ```
 
+### Table of contents:
+- [**sync**](#sync): synchronize stores across browser tabs;
+- [**log**](#log): log updates with Redux DevTools.
+
+<br/>
 
 ## sync
-```ts
-import { sync } from "@chain-store/tools"
-```
-Synchronizes stores between browser tabs using `BroadcastChannel`. It returns a void function to stop synchronization.
 
+Synchronizes stores across browser tabs using `BroadcastChannel`. 
+- **sync**(**stores**: `{ [key: string]: Store }`, **scope**?: `string`): `Disposer`
+
+Each key in `stores` identifies a store during synchronization. Keys must be unique within the specified `scope` and identify the same logical store in every tab.
 
 ```ts
 import { store } from "chain-store";
@@ -21,60 +26,104 @@ import { sync } from "@chains-store/tools";
 const $profile = store({ name: "Ada" });
 const $cart = store({ items: [] });
 
-const stopSync = sync({ $profile, $cart });
+// Store variable names make convenient identifiers.
+const stopSync = sync({ $profile, $cart }, "my-app");
 
-// Call when synchronization is no longer needed:
+// Call to stop synchronization.
 stopSync();
 ```
 
-The first argument is a `Record<string, Store>`. Each key identifies a store; use store variable names for convenience.
+When a store changes, it broadcasts its key and new state. Other tabs apply the update to the store with the same key and scope.
 
-When a store changes, it broadcasts its key and new state. Other tabs apply the update to the store with the same key. Keys must be unique within a scope and identify the same logical store in every tab.
+### Sync by matching values
 
-The optional `scope` separates sync groups. Tabs communicate when they use the same scope and store keys.
+Pass a getter as the second argument to synchronize stores only when their matching values are equal. It can return a single value or an array of values.
 
-### Sync by dependencies
-
-Pass a dependency getter as the second argument to sync stores only when their dependencies match. It can return a single value or an array. Single values and array elements are compared using strict equality; arrays are compared element by element, not as whole objects.
-
+- **sync**(stores, **match**: `<R>() => R | R[]`, scope?): `Disposer`
 
 ```ts
 const $profile = store({ id: 1, name: "Ada" });
-const $preferences = store({ userId: 1, theme: "dark" });
+const $preferences = store({ theme: "dark" });
 
+// Synchronize preferences only for the same user.
 sync(
-  { $profile, $preferences },
+  { $preferences },
   () => $profile.get().id,
 );
 ```
-Because store instances in different tabs are separate, use primitive dependencies rather than object references.
 
+When a store changes, it broadcasts its key, state, and matching values. A receiving store compares the incoming values with its own and updates only if they match. Arrays are compared element by element, not as whole objects.
 
-### Custom matching
+Values are compared using strict equality (`===`). Use primitives as matching values: objects created in different tabs have different identities and won't be strictly equal.
 
-Pass a `match` function after the dependency getter to compare dependencies that contain objects or need custom logic. It receives the current dependency and the dependency from the other tab. If it returns `true`, the store updates.
+### Custom comparison
+
+To compare objects or implement custom logic, pass a `compare` function as the third argument. It receives the current and incoming matching values. If it returns `true`, the store updates.
+
+- **sync**(stores, **match**: `<R>() => R`, **compare**: `(a: R, b: R) => boolean`, scope?): `Disposer`
 
 ```ts
-const $profile = store({
-  user: { id: "user-1", organizationId: "org-1" },
-  name: "Ada",
-});
+const $config = store({ page: 1, search: "" });
+const $items = store([]);
 
-const $preferences = store({
-  user: { id: "user-1", organizationId: "org-1" },
-  theme: "dark",
-});
-
-const stopSync = sync(
-  { $profile, $preferences },
-  () => $profile.get().user,
+sync(
+  { $items },
+  () => $config.get(),
   (current, incoming) =>
-    current.organizationId === incoming.organizationId,
-  "organization-data"
+    current.page === incoming.page &&
+    current.search === incoming.search,
 );
 ```
 
-When using `match`, returning a single object as the dependency is often simpler than returning an array.
+<br/>
 
-## debug
-Debugging with Redux DevTools.
+## log
+Log stores changes and actions updates with Redux DevTools.
+Works in two modes.
+
+### Event logging
+
+- **log**(**units**: `{ [key: string]: Unit }`): `Disposer`
+
+
+```ts
+import { store, chain } from "chain-store";
+import { log } from "@chains-store/tools";
+
+const action = chain<number>();
+const $data = store({ page: 1, items: []});
+const $users = store([]);
+
+// Unit variable names make convenient identifiers.
+const stopLog =log({ $users, $data, action });
+
+// Call to stop synchronization.
+stopLog();
+```
+Pass an object whose keys are the unit names shown in Redux DevTools.
+The `Actions` log shows each unit’s name and the parameters it emitted.
+
+### Store state updates
+
+- **log**(**stores**: `{ [key: string]: Store }`, **units**: `{ [key: string]: Unit }`): `Disposer`
+
+```ts
+const task = action.task({...})
+$data
+  .on(action, {...})
+  .on(task.done, {...});
+
+log({ $data }, { action, task });
+```
+
+Pass stores as the first argument and units as the second. Only store updates 
+are logged. `State` shows the store’s new state.
+
+If an update comes from a unit listed in the second argument, `Actions` shows 
+the unit name alongside the store—for example, `$store: task.done`—and includes the parameters emitted by that unit. If no matching unit is specified, the action is shown as `$store[updated]`.
+
+### Scope
+**log()** also accepts an optional `scope` string. It appears as the instance name in Redux DevTools.
+```ts
+log({ $store }, { task }, "my-scope");
+```

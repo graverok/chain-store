@@ -1,6 +1,6 @@
 {
   "name": "chain-store",
-  "description": "Tiny and simple dependency-free state manager with event-driven stores, extensible action chains, and async workflows.",
+  "description": "A tiny yet surprisingly powerful state manager with event-driven stores, extensible action chains, and async workflows in just 816 bytes.",
   "version": "0.1.3",
   "author": {
     "name": "Aleksandr Gurianov",
@@ -51,7 +51,7 @@
   "scripts": {
     "build-core-dev": "tsc --noEmit && vitest --run  && vite build -c vite.config.core.ts && node scripts/prepare-core-dev.mjs && npm pack ./dist",
     "build": "tsc --noEmit && vitest --run && vite build && node scripts/prepare-dist.mjs",
-    "size": "vite build -l silend && node scripts/adapter-sizes.mjs && node --expose-gc ./scripts/memory-bench.mjs",
+    "size": "node scripts/adapter-sizes.mjs && node --expose-gc ./scripts/memory-bench.mjs",
     "test": "vitest"
   }
 }
