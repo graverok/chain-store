@@ -656,7 +656,7 @@ const $cart = store({ items: [] });
 sync({ $profile, $cart });
 ```
 
-[**Full specs**](https://github.com/graverok/chain-store/src/tools#sync)
+[**Full specs**](https://github.com/graverok/chain-store/tree/main/src/tools#sync)
 
 ---
 
@@ -674,4 +674,4 @@ const $store = store(...).on(action, () => {...});
 log({ $store }, { action });
 ```
 
-[**Full specs**](https://github.com/graverok/chain-store/src/tools#log)
+[**Full specs**](https://github.com/graverok/chain-store/tree/main/src/tools#log)
