@@ -29,8 +29,8 @@ export const catcher = (match?: Match<any> | void) => (error?: Error) => {
 
 export const pusher =
   <U>(arr: U[]) =>
-  (a: U) =>
-    arr.push(a);
+  (...a: U[]) =>
+    arr.push(...a);
 
 export const splicer = <U = unknown>(
   arr: U[],
@@ -50,23 +50,26 @@ export type Watcher = (...args: any[]) => void;
 export type Emitter =
   [((watcher: Watcher) => Disposer) | void, Watcher | void] | [];
 
-export const subscriber = (emitter: Emitter) => {
-  if (emitter[0]) return emitter[0];
+export const subscriber = (emitter: Emitter) =>
+  emitter[0] ??
+  ((...args) => {
+    const subscribers: Watcher[][] = [[], []];
 
-  const subscribers: Watcher[][] = [[], []];
-
-  emitter[0] = (watcher: Watcher, i = 1) => {
-    !subscribers[i].includes(watcher) && subscribers[i].push(watcher);
-    return () => {
-      splicer(subscribers[i], watcher);
-    };
-  };
-
-  emitter[1] = (...args: any[]) => {
-    subscribers.forEach((watchers) =>
-      watchers.forEach((watcher) => watcher(...args)),
+    emitter.push(
+      //@ts-expect-error
+      (watcher: Watcher, i = 1) => {
+        !subscribers[i].includes(watcher) && subscribers[i].push(watcher);
+        return () => {
+          splicer(subscribers[i], watcher);
+        };
+      },
+      (...args: any[]) => {
+        subscribers.forEach((watchers) =>
+          watchers.forEach((watcher) => watcher(...args)),
+        );
+      },
     );
-  };
 
-  return emitter[0];
-};
+    //@ts-expect-error
+    return emitter[0](...args);
+  });

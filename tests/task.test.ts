@@ -202,3 +202,19 @@ test("task().promise", async () => {
   expect(res).toBe(`t3-"ChainError"`);
   res = "";
 });
+
+test("multiple task().promise", async () => {
+  const act = chain<number>();
+  const task1 = act.task((n) => n * 2);
+  const task2 = act.filter(async (n) => n > 0).task((n) => n * 3);
+
+  task1(20).then(handler("pt1"));
+  await delay(10);
+  expect(res).toBe(`pt1-40`);
+  res = "";
+
+  task2(20).then(handler("pt2"));
+  await delay(10);
+  expect(res).toBe(`pt2-60`);
+  res = "";
+});

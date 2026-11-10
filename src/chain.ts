@@ -53,10 +53,16 @@ const createAction = <Input = void, Output = Input>(
     return;
   };
 
-  return Object.assign(
-    action,
-    createMethods<Input, Output>(emitter, start ?? call, next),
-  ) as Action<Input, Output>;
+  return Object.assign(action, {
+    watch: subscriber(emitter),
+    map: <Selected>(cmd: (input: Output) => Promise<Selected> | Selected) =>
+      createAction(start ?? call, pusher(next), cmd),
+    filter: (cmd: (input: Output) => Promise<boolean> | boolean) =>
+      createAction(start ?? call, pusher(next), void 0, cmd),
+    task: <Result>(cmd: (input: Output) => Promise<Result> | Result) =>
+      //@ts-expect-error
+      createTask<Input, Output, Result>(start ?? call, pusher(next), cmd),
+  }) as Action<Input, Output>;
 };
 
 const createTask = <Input, Result, Params>(
@@ -107,7 +113,7 @@ const createTask = <Input, Result, Params>(
 
   const action = (input: Input) => {
     const ret = [] as unknown as Return<Result>;
-    const promise = new Promise((resolve, reject) => ret.push(resolve, reject));
+    const promise = new Promise(pusher(ret));
     promise.catch(() => void 0);
     start(input, [], (carrier) =>
       !carrier || carrier === call ? ret : void 0,
@@ -116,28 +122,9 @@ const createTask = <Input, Result, Params>(
   };
 
   return Object.assign(action, {
-    ...createMethods(em),
-    done: createMethods(ed),
-    fail: createMethods(ef),
-    end: createMethods(ee),
+    watch: subscriber(em),
+    done: { watch: subscriber(ed) },
+    fail: { watch: subscriber(ef) },
+    end: { watch: subscriber(ee) },
   }) as Task<Input, Params, Result>;
-};
-
-const createMethods = <Input, Output>(
-  emitter: Emitter,
-  start?: Carrier<Input>,
-  next?: Carrier<Output>[],
-) => {
-  return !start || !next
-    ? { watch: subscriber(emitter) }
-    : {
-        watch: subscriber(emitter),
-        map: <Selected>(cmd: (input: Output) => Promise<Selected> | Selected) =>
-          createAction(start, pusher(next), cmd),
-        filter: (cmd: (input: Output) => Promise<boolean> | boolean) =>
-          createAction(start, pusher(next), void 0, cmd),
-        task: <Result>(cmd: (input: Output) => Promise<Result> | Result) =>
-          //@ts-expect-error
-          createTask<Input, Output, Result>(start, pusher(next), cmd),
-      };
 };
