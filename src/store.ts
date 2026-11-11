@@ -13,11 +13,7 @@ const createStore = <State, Parent extends unknown | void = void>(
   const em = [] as Emitter;
   const e2 = [] as Emitter;
   const unit = { watch: subscriber(e2) } as Unit<State>;
-
   let state = initialState;
-
-  const off = (action: Unit) =>
-    splicer(disposers, void 0, (x) => x[0] === action)?.[1]();
 
   const set = (next: State) => {
     const diff = next !== state;
@@ -25,8 +21,6 @@ const createStore = <State, Parent extends unknown | void = void>(
     diff && em[1]?.(state);
     e2[1]?.(state);
   };
-
-  const dispose = parent?.watch((arg) => set(fn?.(arg) as State));
 
   const store = {
     get: () => state,
@@ -37,9 +31,9 @@ const createStore = <State, Parent extends unknown | void = void>(
     },
     map: <Selector>(mapper: (state: State) => Selector) =>
       createStore<Selector, State>(mapper(state), unit, mapper),
-    ...(parent
+    ...(parent && fn
       ? {
-          off: dispose as () => void,
+          off: parent.watch((arg) => set(fn(arg) as State)),
         }
       : {
           on: <P extends State, X>(
@@ -49,16 +43,17 @@ const createStore = <State, Parent extends unknown | void = void>(
               payload,
             ) => payload as State,
           ) => {
-            off(unit as unknown as Unit);
+            splicer(disposers, void 0, (x) => x[0] === unit)?.[1]();
+
             disposers.push([
               unit as unknown as Unit,
               unit.watch((...args) => set(updater(state, ...args))),
             ]);
             return store;
           },
-          off: (action?: Unit) => {
-            if (action) {
-              off(action);
+          off: (unit?: Unit) => {
+            if (unit) {
+              splicer(disposers, void 0, (x) => x[0] === unit)?.[1]();
             } else {
               disposers.forEach((d) => d[1]());
               disposers = [];

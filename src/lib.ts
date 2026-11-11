@@ -42,6 +42,11 @@ export const pusher =
   (...a: U[]) =>
     arr.push(...a);
 
+export const awaiter = (fn: () => void) =>
+  Promise.resolve()
+    .then(fn)
+    .catch(() => {});
+
 export const splicer = <U = unknown>(
   arr: U[],
   a?: U,
@@ -51,30 +56,27 @@ export const splicer = <U = unknown>(
   return index >= 0 ? arr.splice(index, 1)[0] : void 0;
 };
 
-export const awaiter = (fn: () => void) =>
-  Promise.resolve()
-    .then(fn)
-    .catch(() => {});
-
 export const subscriber = (emitter: Emitter) =>
   emitter[0] ??
   ((...args) => {
-    const subscribers: Watcher[][] = [[], []];
+    if (!emitter[0]) {
+      const subscribers: Watcher[][] = [[], []];
 
-    emitter.push(
-      //@ts-expect-error
-      (watcher: Watcher, i = 1) => {
-        !subscribers[i].includes(watcher) && subscribers[i].push(watcher);
-        return () => {
-          splicer(subscribers[i], watcher);
-        };
-      },
-      (...args: any[]) => {
-        subscribers.forEach((watchers) =>
-          watchers.forEach((watcher) => watcher(...args)),
-        );
-      },
-    );
+      emitter.push(
+        //@ts-expect-error
+        (watcher: Watcher, i = 1) => {
+          !subscribers[i].includes(watcher) && subscribers[i].push(watcher);
+          return () => {
+            splicer(subscribers[i], watcher);
+          };
+        },
+        (...args: any[]) => {
+          subscribers.forEach((watchers) =>
+            watchers.forEach((watcher) => watcher(...args)),
+          );
+        },
+      );
+    }
 
     //@ts-expect-error
     return emitter[0](...args);

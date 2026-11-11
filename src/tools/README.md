@@ -1,6 +1,6 @@
 # @chain-store/tools
 
-**Tools** for **chain-store**, a tiny (816 bytes) yet surprisingly powerful event-based state manager.<br/>
+**Tools** for **chain-store**, a tiny (814 bytes) yet surprisingly powerful event-based state manager.<br/>
 
 ```shell
 npm install chain-store @chain-store/tools

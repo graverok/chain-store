@@ -10,7 +10,7 @@
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
 - Separate adapters for **React**, **Preact**, **Solid**, **Vue**, and **Angular**; built-in support for **Svelte**;
-- Small: **816 bytes** minified & brotlied, with zero dependencies.
+- Small: **814 bytes** minified & brotlied, with zero dependencies.
 - Tools to **sync** stores across tabs and **log** state changes to Redux DevTools.
 
 
