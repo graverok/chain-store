@@ -52,7 +52,7 @@
   "scripts": {
     "build-core-dev": "tsc --noEmit && vitest --run  && vite build -c vite.config.core.ts && node scripts/prepare-core-dev.mjs && npm pack ./dist",
     "build": "tsc --noEmit && vitest --run && vite build && node scripts/prepare-dist.mjs",
-    "size": "node scripts/build-sizes.mjs && node --expose-gc ./scripts/memory-bench.mjs",
+    "size": "node scripts/build-sizes.mjs && node --expose-gc scripts/memory-bench-extend.mjs && node --expose-gc scripts/memory-bench-add.mjs && node --expose-gc scripts/memory-bench-store.mjs && node --expose-gc scripts/memory-bench-leaks.mjs",
     "test": "vitest"
   }
 }
