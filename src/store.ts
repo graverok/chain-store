@@ -12,7 +12,7 @@ const createStore = <State, Parent extends unknown | void = void>(
   let disposers: [Unit, Disposer][] = [];
   const em = [] as Emitter;
   const e2 = [] as Emitter;
-  const unit = { watch: subscriber(e2) } as Unit<State>;
+  const unit = subscriber(e2) as Unit<State>;
   let state = initialState;
 
   const set = (next: State) => {
@@ -24,10 +24,10 @@ const createStore = <State, Parent extends unknown | void = void>(
 
   const store = {
     get: () => state,
-    watch: subscriber(em),
+    ...subscriber(em),
     subscribe: (watcher: Watcher) => {
       watcher(state);
-      return subscriber(em)(watcher);
+      return subscriber(em).watch(watcher);
     },
     map: <Selector>(mapper: (state: State) => Selector) =>
       createStore<Selector, State>(mapper(state), unit, mapper),

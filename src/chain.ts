@@ -60,15 +60,18 @@ const createAction = <Input = void, Output = Input>(
 
   propagate?.([void 0, emitter, next, map, filter]);
 
-  return Object.assign((input: Input) => invoke(input, [] as Queue), {
-    watch: subscriber(emitter),
-    map: <Result>(map: (params: Output) => Promise<Result> | Result) =>
-      createAction<Input, Result>(invoke, pusher(next), map),
-    filter: (filter: (params: Output) => Promise<boolean> | boolean) =>
-      createAction<Input, Output>(invoke, pusher(next), void 0, filter),
-    task: <Result>(task: (params: Output) => Promise<Result> | Result) =>
-      createTask<Input, Output, Result>(invoke, pusher(next), task),
-  }) as Action<Input, Output>;
+  return Object.assign(
+    (input: Input) => invoke(input, [] as Queue),
+    subscriber(emitter),
+    {
+      map: <Result>(map: (params: Output) => Promise<Result> | Result) =>
+        createAction<Input, Result>(invoke, pusher(next), map),
+      filter: (filter: (params: Output) => Promise<boolean> | boolean) =>
+        createAction<Input, Output>(invoke, pusher(next), void 0, filter),
+      task: <Result>(task: (params: Output) => Promise<Result> | Result) =>
+        createTask<Input, Output, Result>(invoke, pusher(next), task),
+    },
+  ) as Action<Input, Output>;
 };
 
 const createTask = <Input, Params, Result>(
@@ -85,17 +88,9 @@ const createTask = <Input, Params, Result>(
   const exec = async (params: Params, ret?: Return<Result>) => {
     const promise = task(params);
 
-    if (!(promise instanceof Promise)) {
-      em[1]?.(params);
-      return awaiter(() => {
-        ed[1]?.(promise, params);
-        ret?.[0](promise);
-      });
-    }
-
-    const duplicate = pending.includes(promise);
-    !duplicate && pending.push(promise);
-    !duplicate && em[1]?.(params);
+    em[1]?.(params);
+    const duplicate = promise instanceof Promise && pending.includes(promise);
+    !duplicate && pending.push(promise as Promise<Result>);
 
     try {
       const result = await promise;
@@ -119,11 +114,11 @@ const createTask = <Input, Params, Result>(
       start(input, [], exec, ret);
       return promise;
     },
+    subscriber(em),
     {
-      watch: subscriber(em),
-      done: { watch: subscriber(ed) },
-      fail: { watch: subscriber(ef) },
-      end: { watch: subscriber(ee) },
+      done: subscriber(ed),
+      fail: subscriber(ef),
+      end: subscriber(ee),
     },
   ) as Task<Input, Params, Result>;
 };

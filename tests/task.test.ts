@@ -92,7 +92,7 @@ test("simultaneous task calls", async () => {
   task1(10);
 
   await delay();
-  expect(res).toBe("t1-5 t2-5 t1-10 t2-10");
+  expect(res).toBe("t1-5 t2-5 t1-10 t2-10 t1-5 t2-5 t1-10 t2-10");
   res = "";
 
   await delay(200);
@@ -104,7 +104,7 @@ test("simultaneous task calls", async () => {
   task2(10).then(handler("pt2"));
 
   await delay();
-  expect(res).toBe("t1-10 t2-10");
+  expect(res).toBe("t1-10 t2-10 t1-10 t2-10 t1-10 t2-10");
   res = "";
   await delay();
   expect(res).toBe("t2d-30"); // stored resolves
@@ -216,5 +216,30 @@ test("multiple task().promise", async () => {
   task2(20).then(handler("pt2"));
   await delay(10);
   expect(res).toBe(`pt2-60`);
+  res = "";
+});
+
+test("sync task", async () => {
+  const act1 = chain<number>();
+  const task1 = act1.task((n) => n * 2);
+  act1.watch(handler("a1"));
+  task1.watch(handler("t1"));
+  task1.done.watch(handler("t1d"));
+  task1.end.watch(handler("t1e"));
+  task1(10)
+    .then(handler("et1"))
+    .finally(() => {
+      res += " done";
+    });
+
+  expect(res).toBe("a1-10");
+  await delay();
+  expect(res).toBe("a1-10 t1-10");
+  await delay();
+  expect(res).toBe("a1-10 t1-10 t1d-20 t1e-10");
+  await delay();
+  expect(res).toBe("a1-10 t1-10 t1d-20 t1e-10 et1-20");
+  await delay();
+  expect(res).toBe("a1-10 t1-10 t1d-20 t1e-10 et1-20 done");
   res = "";
 });

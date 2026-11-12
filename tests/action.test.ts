@@ -125,18 +125,20 @@ test("action function types", async () => {
 test("action promises types", async () => {
   const promise = new Promise<number>((resolve) => resolve(10));
   let results: any[] = [];
-  const act1 = chain<Promise<number>>().map((p) => p);
+  const act1 = chain<number>().map((p) => p);
   const act2 = chain<number>().map(async (n) => n);
-  const act3 = chain<Promise<number>>().map(async (p) => String(await p));
+  const act3 = chain<number>().map(async (p) => String(await p));
   const act4 = chain().map(async () => promise);
 
   const payload = [promise, 10, promise, void 0];
   const expected = [10, 10, "10", 10];
 
   [act1, act2, act3, act4].forEach((action, index) => {
+    //@ts-expect-error
     action.watch((r) => {
       results[index] = r;
     });
+    //@ts-expect-error
     action(payload[index]);
   });
 
