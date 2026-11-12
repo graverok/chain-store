@@ -28,7 +28,7 @@ npm install chain-store
 - **Adapters**:  [React/Preact](#react-preact)  •  [Solid](#solid)  •  [Vue](#vue)  •  [Svelte](#svelte)  •  [Angular](#angular)<br/>
 - [**Chain life cycle**](#chain-life-cycle)<br/>
 - [**Types summary**](#types-summary)<br/>
-- [**Tools**](#tools)<br/>
+- [**Tools**](#tools)  `sync` `log` `dedupe`
 
 <br/>
 
@@ -643,11 +643,10 @@ Commands run synchronously, except for tasks. Tasks start after a promise delay 
 npm install @chain-store/tools
 ```
 
-### sync
+### sync`(stores, match?, compare?, scope?)`
 Synchronizes stores across browser tabs using `BroadcastChannel`.
 
 ```ts
-import { store } from "chain-store";
 import { sync } from "@chains-store/tools";
 
 const $profile = store({ name: "Ada" });
@@ -660,12 +659,11 @@ sync({ $profile, $cart });
 
 ---
 
-### log
-Log chain emissions and store updates to Redux DevTools
+### log`(stores, units, scope?)`
+Logs chain emissions and store updates to `Redux DevTools`.
 
 
 ```ts
-import { chain, store } from "chain-store";
 import { log } from "@chain-store/tools";
 
 const action = chain();
@@ -675,3 +673,21 @@ log({ $store }, { action });
 ```
 
 [**Full specs**](https://github.com/graverok/chain-store/tree/main/src/tools#log)
+
+---
+
+### dedupe`(request, compare?)`
+Deduplicates in-flight requests made by `.task`.
+
+
+```ts
+import { dedupe } from "@chain-store/tools";
+
+const deduped = chain<{ page: number }>()
+  .task(dedupe(
+    request,                            /* Request */
+    (a, b) => a.page === b.page         /* Optional compare function */
+  ));
+```
+
+[**Full specs**](https://github.com/graverok/chain-store/tree/main/src/tools#dedupe)

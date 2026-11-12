@@ -146,7 +146,15 @@ try {
         require: "./index.cjs",
       },
     },
-    files: ["log", "sync", "index.cjs", "index.d.ts", "index.js", "README.md"],
+    files: [
+      "index.cjs",
+      "index.d.ts",
+      "index.js",
+      "README.md",
+      "log.d.ts",
+      "sync.d.ts",
+      "dedupe.d.ts",
+    ],
   };
 
   await writeFile(

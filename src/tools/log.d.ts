@@ -12,3 +12,9 @@ export declare const log: {
     scope?: string,
   ): () => void;
 };
+
+declare global {
+  interface Window {
+    __REDUX_DEVTOOLS_EXTENSION__?: unknown;
+  }
+}
