@@ -18,21 +18,21 @@ let before = save();
 for (let i = 0; i < COUNT; i++) {
   chains[i] = chain();
 }
-const mem_chains = save() - before;
+const mem_chains = Math.round((save() - before) / COUNT);
 for (let i = 0; i < COUNT; i++) {
   maps[i] = chains[0].map(mapper);
 }
-const mem_maps = save() - before;
+const mem_maps = Math.round((save() - before) / COUNT);
 for (let i = 0; i < COUNT; i++) {
   filters[i] = maps[0].filter(mapper);
 }
-const mem_filters = save() - before;
+const mem_filters = Math.round((save() - before) / COUNT);
 for (let i = 0; i < COUNT; i++) {
   tasks[i] = filters[0].task(mapper);
 }
-const mem_tasks = save() - before;
+const mem_tasks = Math.round((save() - before) / COUNT);
 
 delete globalThis.__benchKeepAlive;
 console.log(
-  `add:\t  chain(${Math.round(mem_chains / COUNT)}).map(+${Math.round((mem_maps - mem_chains) / COUNT)}).filter(+${Math.round((mem_filters - mem_maps) / COUNT)}).task(+${Math.round((mem_tasks - mem_filters) / COUNT)})`,
+  `add:\t  chain(${mem_chains}).map(+${mem_maps - mem_chains}).filter(+${mem_filters - mem_maps}).task(+${mem_tasks - mem_filters})`,
 );

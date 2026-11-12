@@ -16,13 +16,11 @@ let before = save();
 for (let i = 0; i < COUNT; i++) {
   stores[i] = store(1);
 }
-const mem_stores = save() - before;
+const mem_stores = Math.round((save() - before) / COUNT);
 for (let i = 0; i < COUNT; i++) {
   parts[i] = stores[0].map(mapper);
 }
-const mem_parts = save() - before;
+const mem_parts = Math.round((save() - before) / COUNT);
 
 delete globalThis.__benchKeepAlive;
-console.log(
-  `store:\t  store(${Math.round(mem_stores / COUNT)}).map(+${Math.round((mem_parts - mem_stores) / COUNT)})`,
-);
+console.log(`store:\t  store(${mem_stores}).map(+${mem_parts - mem_stores})`);
