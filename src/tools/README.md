@@ -1,129 +1,134 @@
 # @chain-store/tools
 
-**Tools** for **chain-store**, a tiny (814 bytes) yet surprisingly powerful event-based state manager.<br/>
+**Tools** for **chain-store**, a tiny yet surprisingly powerful event-based state manager.<br/>
 
 ```shell
 npm install chain-store @chain-store/tools
 ```
 
 ### Table of contents:
-- [**sync**](#sync): synchronize stores across browser tabs;
-- [**log**](#log): log updates with Redux DevTools.
+- [**sync**](#sync): Synchronizes stores across browser tabs using `BroadcastChannel`.
+- [**log**](#log): Logs chain emissions and store updates to `Redux DevTools`.
+- [**dedupe**](#dedupe): Deduplicates in-flight requests made by `.task`.
 
-<br/>
 
-## sync
+<br/><span id="sync" />
+
+## sync`#store`
+
 
 Synchronizes stores across browser tabs using `BroadcastChannel`. 
-- **sync**(**stores**: `{ [key: string]: Store }`, **scope**?: `string`): `Disposer`
 
-Each key in `stores` identifies a store during synchronization. Keys must be unique within the specified `scope` and identify the same logical store in every tab.
+### sync`(stores, match?, compare?, scope?): Disposer`
 
-```ts
-import { store } from "chain-store";
-import { sync } from "@chains-store/tools";
+- **stores**: `{ [name: string]: Store }`<br/>
+  An object containing the stores to synchronize. Each `name` identifies a store and should be unique within the `scope`.
 
-const $profile = store({ name: "Ada" });
-const $cart = store({ items: [] });
 
-// Store variable names make convenient identifiers.
-const stopSync = sync({ $profile, $cart }, "my-app");
+- **match**?: `<R>() => R | R[]`<br/>
+  An optional getter whose return value determines whether to synchronize. 
+  Arrays are compared element by element. By default, values are compared using strict equality.
 
-// Call to stop synchronization.
-stopSync();
-```
 
-When a store changes, it broadcasts its key and new state. Other tabs apply the update to the store with the same key and scope.
+- **compare**?: `<R>(a: R, b: R) => boolean`<br/>
+  An optional function that replaces the default comparison, allowing you to 
+  compare objects or implement custom logic.
 
-### Sync by matching values
 
-Pass a getter as the second argument to synchronize stores only when their matching values are equal. It can return a single value or an array of values.
 
-- **sync**(stores, **match**: `<R>() => R | R[]`, scope?): `Disposer`
+- **scope**?: `string`<br/>
+  An optional scope name passed to `BroadcastChannel` to distinguish stores with the same name.
+
 
 ```ts
-const $profile = store({ id: 1, name: "Ada" });
-const $preferences = store({ theme: "dark" });
+import { sync } from "@chain-store/tools";
 
-// Synchronize preferences only for the same user.
-sync(
-  { $preferences },
-  () => $profile.get().id,
-);
-```
-
-When a store changes, it broadcasts its key, state, and matching values. A receiving store compares the incoming values with its own and updates only if they match. Arrays are compared element by element, not as whole objects.
-
-Values are compared using strict equality (`===`). Use primitives as matching values: objects created in different tabs have different identities and won't be strictly equal.
-
-### Custom comparison
-
-To compare objects or implement custom logic, pass a `compare` function as the third argument. It receives the current and incoming matching values. If it returns `true`, the store updates.
-
-- **sync**(stores, **match**: `<R>() => R`, **compare**: `(a: R, b: R) => boolean`, scope?): `Disposer`
-
-```ts
 const $config = store({ page: 1, search: "" });
 const $items = store([]);
 
 sync(
-  { $items },
-  () => $config.get(),
-  (current, incoming) =>
-    current.page === incoming.page &&
-    current.search === incoming.search,
+  { $items },                 /* Stores */
+  () => $config.get(),        /* Config used for matching */
+  (a, b) =>                   /* Comparison function */
+    a.page === b.page &&
+    a.search === b.search,
 );
 ```
 
 <br/>
+<span id="log"/>
 
-## log
-Log stores changes and actions updates with Redux DevTools.
-Works in two modes.
+## log`#store`
 
-### Event logging
+Logs chain emissions and store updates to `Redux DevTools`.
 
-- **log**(**units**: `{ [key: string]: Unit }`): `Disposer`
+### log`(stores, units, scope?): Disposer`
+
+- **stores**: `{ [name: string]: Store | StorePart }`<br/>
+  An object containing the stores to observe.  
 
 
-```ts
-import { store, chain } from "chain-store";
-import { log } from "@chains-store/tools";
+- **units**: `{ [name: string]: Action | Task | Store | StorePart }`<br/>
+  An object containing the units used to identify the event that caused each update.
 
-const action = chain<number>();
-const $data = store({ page: 1, items: []});
-const $users = store([]);
 
-// Unit variable names make convenient identifiers.
-const stopLog =log({ $users, $data, action });
+- **scope**?: `string`<br/>
+  An optional name for this instance in `DevTools`.
 
-// Call to stop synchronization.
-stopLog();
-```
-Pass an object whose keys are the unit names shown in Redux DevTools.
-The `Actions` log shows each unit’s name and the parameters it emitted.
-
-### Store state updates
-
-- **log**(**stores**: `{ [key: string]: Store }`, **units**: `{ [key: string]: Unit }`): `Disposer`
 
 ```ts
+import { log } from "@chain-store/tools";
+
+const action = chain();
 const task = action.task({...})
-$data
-  .on(action, {...})
-  .on(task.done, {...});
+const $data = store({ page: 1, items: []});
 
-log({ $data }, { action, task });
+$data.on(action, {...}).on(task.done, {...});
+
+log(
+  { $data }, 
+  { action, task }                     
+);
 ```
 
-Pass stores as the first argument and units as the second. Only store updates 
-are logged. `State` shows the store’s new state.
+### log`(units, scope?): Disposer`
 
-If an update comes from a unit listed in the second argument, `Actions` shows 
-the unit name alongside the store—for example, `$store: task.done`—and includes the parameters emitted by that unit. If no matching unit is specified, the action is shown as `$store[updated]`.
+If no stores are provided `log` works as a simple event logger.
 
-### Scope
-**log()** also accepts an optional `scope` string. It appears as the instance name in Redux DevTools.
 ```ts
-log({ $store }, { task }, "my-scope");
+log({ $data, action, task });
+```
+
+<br/><span id="dedupe"/>
+
+## dedupe `#task`
+
+Deduplicates in-flight requests made by `.task`.
+If a call with matching parameters is already pending, dedupe returns its promise 
+instead of invoking the request function again, preventing duplicate emissions.
+
+### dedupe`<P, R>(request`, `compare?): typeof request`
+
+- **request**: `(params: P) => Promise<R>`<br/>
+  A function that accepts parameters and returns a `Promise`
+
+
+- **compare**?: `(a: P, b: P) => boolean`<br/>
+  An optional function for comparing parameters. Defaults to `(a, b) => a === b`.
+
+
+```ts
+import { dedupe } from "@chain-store/tools";
+import { request } from "./api"; 
+
+const deduped = chain<{ page: number }>()
+  .task(dedupe(
+    request,                            /* Request */
+    (a, b) => a.page === b.page         /* Comparison function */
+  ));
+
+deduped({ page: 1}).then(console.log);  /* Logs twice */
+deduped({ page: 1}).then(console.log);  
+
+deduped.done.watch(console.log);        /* Emits once */     
 ```

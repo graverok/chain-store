@@ -5,7 +5,7 @@
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
-- Small and dependency-free: **1.04 kB** minified & brotlied with the Vue adapter included.
+- Small and dependency-free: **1.02 kB** minified & brotlied with the Vue adapter included.
 - [**Tools**](https://www.npmjs.com/package/@chain-store/tools) to **sync** stores across tabs and **log** state changes to Redux DevTools.
 
 

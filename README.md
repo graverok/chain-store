@@ -10,8 +10,8 @@
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
 - Separate adapters for **React**, **Preact**, **Solid**, **Vue**, and **Angular**; built-in support for **Svelte**;
-- Small: **814 bytes** minified & brotlied, with zero dependencies.
-- Tools to **sync** stores across tabs and **log** state changes to Redux DevTools.
+- Small: **793 bytes** minified & brotlied, with zero dependencies.
+- Tools to **sync** stores across tabs, **log** state changes, and more.
 
 
 ### Installation
@@ -23,9 +23,9 @@ npm install chain-store
 
 ### Table of contents:
 - [**Action**](#action)<br/>
-- [**Task**](#task)<br/>
-- [**Store**](#store):  [Partial store](#partial-store)  •  [Optional mutability](#optional-mutability)<br/>
-- **Adapters**:  [React/Preact](#react-preact)  •  [Solid](#solid)  •  [Vue](#vue)  •  [Svelte](#svelte)  •  [Angular](#angular)<br/>
+- [**Task**](#task)  •  [Task call](#task-call) <br/>
+- [**Store**](#store)  •  [Partial store](#partial-store)  •  [Optional mutability](#optional-mutability)<br/>
+- **Adapters**  •  [React/Preact](#react-preact)  •  [Solid](#solid)  •  [Vue](#vue)  •  [Svelte](#svelte)  •  [Angular](#angular)<br/>
 - [**Chain life cycle**](#chain-life-cycle)<br/>
 - [**Types summary**](#types-summary)<br/>
 - [**Tools**](#tools)  `sync` `log` `dedupe`
@@ -146,6 +146,7 @@ is blocked or an error is thrown before the task runs, no fail event is emitted.
 ---
 
 ### Task call 
+
 Each call to a task returns a `Promise<Result>` that represents the current task 
 execution. This is useful for accessing the task’s result outside the store or 
 running code when the task resolves.
@@ -682,12 +683,9 @@ Deduplicates in-flight requests made by `.task`.
 
 ```ts
 import { dedupe } from "@chain-store/tools";
+import { request } from "./api";
 
-const deduped = chain<{ page: number }>()
-  .task(dedupe(
-    request,                            /* Request */
-    (a, b) => a.page === b.page         /* Optional compare function */
-  ));
+const deduped = chain<number>().task(dedupe(request));
 ```
 
 [**Full specs**](https://github.com/graverok/chain-store/tree/main/src/tools#dedupe)
