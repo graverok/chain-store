@@ -1,5 +1,5 @@
-import { expect, test } from "vitest";
-import { chain } from "../src";
+import { expect, test, vi } from "vitest";
+import { chain, store } from "../src";
 import { delay, filter, mapper } from "./utils";
 
 let res: string = "";
@@ -144,4 +144,20 @@ test("action promises types", async () => {
 
   await delay(1);
   expected.forEach((answer, index) => expect(results[index]).toBe(answer));
+});
+
+test("action chaining lifecycle", () => {
+  const $store = store(0);
+  const act = chain<number>();
+  const act2 = act.map(() => $store.get() * 2);
+  const fn1 = vi.fn();
+
+  $store.on(act);
+  act2.watch(fn1);
+
+  act(5);
+  expect(fn1).toHaveBeenLastCalledWith(10);
+
+  act2(10);
+  expect(fn1).toHaveBeenLastCalledWith(20);
 });

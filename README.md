@@ -266,6 +266,8 @@ $store.set({ data: { name: "test" } });   //=> "test"
 $store.set({ data: $partial.get() });     /* No output: the partial state hasn't changed */
 ```
 
+Before nullifying a partial store, make sure to call its `.off()` method to dispose of its subscriptions.
+
 ---
 
 ### Optional mutability
@@ -650,10 +652,10 @@ Synchronizes stores across browser tabs using `BroadcastChannel`.
 ```ts
 import { sync } from "@chains-store/tools";
 
-const $profile = store({ name: "Ada" });
-const $cart = store({ items: [] });
+const $name = store("Ada");
+const $items = store([]);
 
-sync({ $profile, $cart });
+sync({ $name, $items });
 ```
 
 [**Full specs**](https://github.com/graverok/chain-store/tree/main/src/tools#sync)
@@ -668,7 +670,7 @@ Logs chain emissions and store updates to `Redux DevTools`.
 import { log } from "@chain-store/tools";
 
 const action = chain();
-const $store = store(...).on(action, () => {...});
+const $store = store().on(action);
 
 log({ $store }, { action });
 ```
@@ -689,3 +691,34 @@ const deduped = chain<number>().task(dedupe(request));
 ```
 
 [**Full specs**](https://github.com/graverok/chain-store/tree/main/src/tools#dedupe)
+
+---
+
+### supersede`(request)`
+Supersedes any previous in-flight request made by `.task`.
+
+
+```ts
+import { supersede } from "@chain-store/tools";
+import { request } from "./api";
+
+const superseded = chain<number>().task(supersede(request));
+```
+
+[**Full specs**](https://github.com/graverok/chain-store/tree/main/src/tools#supersede)
+
+---
+
+### throttle/debounce`(delay, command)`
+Throttles or debounces `chain` command functions.
+
+
+```ts
+import { throttle, debounce } from "@chain-store/tools";
+
+const action = chain<number>();
+const throttled = action.map(throttle(200, (n) => n * 2));
+const debounced = action.map(debounce(200, (n) => n * 2));
+```
+
+[**Full specs**](https://github.com/graverok/chain-store/tree/main/src/tools#throttle-debounce)

@@ -154,6 +154,9 @@ try {
       "log.d.ts",
       "sync.d.ts",
       "dedupe.d.ts",
+      "supersede.d.ts",
+      "throttle.d.ts",
+      "debounce.d.ts",
     ],
   };
 

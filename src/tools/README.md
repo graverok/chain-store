@@ -10,6 +10,8 @@ npm install chain-store @chain-store/tools
 - [**sync**](#sync): Synchronizes stores across browser tabs using `BroadcastChannel`.
 - [**log**](#log): Logs chain emissions and store updates to `Redux DevTools`.
 - [**dedupe**](#dedupe): Deduplicates in-flight requests made by `.task`.
+- [**supersede**](#supersede): Supersedes any previous in-flight request with `AbortController`
+- [**throttle**/**debounce**](#throttle-debounce): Throttles or debounces chain command functions.
 
 
 <br/><span id="sync" />
@@ -17,7 +19,7 @@ npm install chain-store @chain-store/tools
 ## sync`#store`
 
 
-Synchronizes stores across browser tabs using `BroadcastChannel`. 
+Synchronizes stores across browser tabs using `BroadcastChannel`.
 
 ### sync`(stores, match?, compare?, scope?): Disposer`
 
@@ -26,12 +28,12 @@ Synchronizes stores across browser tabs using `BroadcastChannel`.
 
 
 - **match**?: `<R>() => R | R[]`<br/>
-  An optional getter whose return value determines whether to synchronize. 
+  An optional getter whose return value determines whether to synchronize.
   Arrays are compared element by element. By default, values are compared using strict equality.
 
 
 - **compare**?: `<R>(a: R, b: R) => boolean`<br/>
-  An optional function that replaces the default comparison, allowing you to 
+  An optional function that replaces the default comparison, allowing you to
   compare objects or implement custom logic.
 
 
@@ -47,9 +49,9 @@ const $config = store({ page: 1, search: "" });
 const $items = store([]);
 
 sync(
-  { $items },                 /* Stores */
-  () => $config.get(),        /* Config used for matching */
-  (a, b) =>                   /* Comparison function */
+{ $items },                       /* Stores */
+  () => $config.get(),            /* Config used for matching */
+  (a, b) =>                       /* Comparison function */
     a.page === b.page &&
     a.search === b.search,
 );
@@ -65,7 +67,7 @@ Logs chain emissions and store updates to `Redux DevTools`.
 ### log`(stores, units, scope?): Disposer`
 
 - **stores**: `{ [name: string]: Store | StorePart }`<br/>
-  An object containing the stores to observe.  
+  An object containing the stores to observe.
 
 
 - **units**: `{ [name: string]: Action | Task | Store | StorePart }`<br/>
@@ -104,13 +106,13 @@ log({ $data, action, task });
 ## dedupe `#task`
 
 Deduplicates in-flight requests made by `.task`.
-If a call with matching parameters is already pending, dedupe returns its promise 
+If a call with matching parameters is already pending, dedupe returns its promise
 instead of invoking the request function again, preventing duplicate emissions.
 
 ### dedupe`<P, R>(request`, `compare?): typeof request`
 
 - **request**: `(params: P) => Promise<R>`<br/>
-  A function that accepts parameters and returns a `Promise`
+  A function that accepts parameters and returns a `Promise`.
 
 
 - **compare**?: `(a: P, b: P) => boolean`<br/>
@@ -123,12 +125,67 @@ import { request } from "./api";
 
 const deduped = chain<{ page: number }>()
   .task(dedupe(
-    request,                            /* Request */
-    (a, b) => a.page === b.page         /* Comparison function */
+    request,                              /* Request */
+    (a, b) => a.page === b.page           /* Comparison function */
   ));
 
-deduped({ page: 1}).then(console.log);  /* Logs twice */
-deduped({ page: 1}).then(console.log);  
+deduped({ page: 1 }).then(console.log);   /* Logs twice */
+deduped({ page: 1 }).then(console.log);
 
-deduped.done.watch(console.log);        /* Emits once */     
+deduped.done.watch(console.log);          /* Emits once */     
+```
+
+<br/><span id="supersede"/>
+
+## supersede `#task`
+
+Adds an `AbortSignal` to each request and supersedes the previous request by aborting its signal on subsequent calls.
+
+### supersede`<P, R>(request): (params: P) => Promise<R>`
+
+- **request**: `(params: P, init: { signal: AbortSignal }) => Promise<R>`<br/>
+  A function that accepts parameters and returns a `Promise`. Abort signal is passed to the second argument as part of `InitRequest`.
+
+
+
+```ts
+import { supersede } from "@chain-store/tools";
+import { request } from "./api"; 
+
+const superseded = chain<{ page: number }>()
+  .task(supersede(request));
+
+superseded({ page: 1 }).catch(console.log); /* Logs error */
+superseded({ page: 1 }).then(console.log);  /* Logs success */
+```
+
+<br/><span id="throttle-debounce"/>
+
+## throttle/debouce `#chain`
+Throttles or debounces chain command functions. Each call returns a `Promise` to implement delay. Skipped calls are rejected.
+### `<P, R>(delay, command): (params: P) => Promise<R>`
+
+- **delay**: `number`<br/>
+  A throttle/debounce delay in milliseconds.
+
+
+- **command**: `(params: P) => Promise<R> | R`<br/>
+  A chain mapper of filter command function.
+
+```ts
+import { debounce } from "@chain-store/tools";
+import { throttle } from "./throttle";
+
+const act = chain<number>();
+
+const throttled = act.map(throttle(200, (n) => `throttled: ${n}`))
+const debounced = act.map(debounce(200, (n) => `debounced: ${n}`))
+
+throttled.watch(console.log);
+debounced.watch(console.log);
+
+act(1);   //-> "throttled: 1"
+act(2);
+act(3);   //-> "throttled: 3" (in 200ms)
+          //-> "debounced: 3" (in 200ms)
 ```
