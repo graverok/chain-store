@@ -28,7 +28,7 @@ npm install chain-store
 - **Adapters**  •  [React/Preact](#react-preact)  •  [Solid](#solid)  •  [Vue](#vue)  •  [Svelte](#svelte)  •  [Angular](#angular)<br/>
 - [**Chain life cycle**](#chain-life-cycle)<br/>
 - [**Types summary**](#types-summary)<br/>
-- [**Tools**](#tools)  `sync` `log` `dedupe`
+- [**Tools**](#tools)  `sync` `log` `dedupe` `supersede` `throttle` `debounce`
 
 <br/>
 
