@@ -163,7 +163,7 @@ superseded({ page: 1 }).then(console.log);  /* Logs success */
 
 ## throttle/debouce `#chain`
 Throttles or debounces chain command functions. Each call returns a `Promise` to implement delay. Skipped calls are rejected.
-### `<P, R>(delay, command): (params: P) => Promise<R>`
+### throttle/debouce`<P, R>(delay, command): (params: P) => Promise<R>`
 
 - **delay**: `number`<br/>
   A throttle/debounce delay in milliseconds.
