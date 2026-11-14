@@ -69,7 +69,7 @@ globalThis.__benchKeepAlive.mapped = null;
 const action_map_release = Math.round((save() - before) / COUNT);
 delete globalThis.__benchKeepAlive;
 console.log(
-  `leaks:\t  store.map.off(${store_map_off}), chain.map#nullify(+${action_map_release})`,
+  `leaks:\t  store.map.off(${store_map_off}) chain.map#nullify(+${action_map_release})`,
 );
 console.log(
   `\t  store.watch(${[store_watch1, store_watch2].join("/")}) chain.watches(${[action_watch, task_watch, task_done_watch].join("/")})`,
