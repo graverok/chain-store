@@ -14,7 +14,7 @@ export const sync = (...args) => {
       args.splice(0, 1)[0] ??
       ((a, b) =>
         Array.isArray(a) && Array.isArray(b)
-          ? Boolean(a.every((n, i) => n === b[i]))
+          ? a.length === b.length && a.every((n, i) => n === b[i])
           : a === b);
 
     const channel = new BroadcastChannel(`__CHAIN_STORE__` + scope);

@@ -1,4 +1,4 @@
-import { Emitter, splicer, subscriber, type Watcher } from "./lib";
+import { Emitter, subscriber, type Watcher } from "./lib";
 import { Disposer, Store, StorePart, Unit } from "./types";
 
 export const store = <State>(initialState: State) =>
@@ -6,64 +6,63 @@ export const store = <State>(initialState: State) =>
 
 const createStore = <State, Parent extends unknown | void = void>(
   initialState: State,
-  parent?: Unit<Parent>,
-  fn?: (state: Parent) => State,
+  propagate?: (set: (state: State) => void) => () => void,
 ): Parent extends void ? Store<State> : StorePart<State> => {
-  let disposers: [Unit, Disposer][] = [];
-  const em = [] as Emitter;
-  const e2 = [] as Emitter;
-  const unit = subscriber(e2) as Unit<State>;
+  let disposers: Map<Unit<unknown, unknown>, Disposer> | void;
+  let parts: Set<() => void>;
+  const emitter = [] as Emitter;
   let state = initialState;
 
   const set = (next: State) => {
     const diff = next !== state;
     state = next;
-    diff && em[1]?.(state);
-    e2[1]?.(state);
+    diff && emitter[1]?.(state);
+    parts?.forEach((p) => p());
   };
 
   const store = {
     get: () => state,
-    ...subscriber(em),
+    ...subscriber(emitter),
     subscribe: (watcher: Watcher) => {
       watcher(state);
-      return subscriber(em).watch(watcher);
+      return store.watch(watcher);
     },
-    map: <Selector>(mapper: (state: State) => Selector) =>
-      createStore<Selector, State>(mapper(state), unit, mapper),
-    ...(parent && fn
-      ? {
-          off: parent.watch((arg) => set(fn(arg) as State)),
+    map: <Selector>(map: (state: State) => Selector) =>
+      createStore<Selector, State>(map(state), (set) => {
+        const updater = () => set(map(state));
+        (parts = parts ?? new Set()) && parts.add(updater);
+        return () => parts.delete(updater);
+      }),
+    off:
+      propagate?.(set) ??
+      ((unit?: Unit) => {
+        if (unit) {
+          disposers?.get(unit)?.();
+          disposers?.delete(unit);
+        } else {
+          disposers?.forEach((d) => d());
+          disposers?.clear();
         }
-      : {
-          on: <P extends State, X>(
-            unit: Unit<P, X>,
-            updater: (state: State, payload: P, ext: X) => State = (
-              _,
-              payload,
-            ) => payload as State,
-          ) => {
-            splicer(disposers, void 0, (x) => x[0] === unit)?.[1]();
+        return store;
+      }),
+    ...(!propagate && {
+      on: <P extends State, X>(
+        unit: Unit<P, X>,
+        updater: (state: State, payload: P, ext: X) => State = (_, payload) =>
+          payload as State,
+      ) => {
+        disposers?.get(unit)?.();
+        (disposers = disposers ?? new Map()) &&
+          disposers.set(
+            unit,
+            unit.watch((...args) => set(updater(state, ...args))),
+          );
 
-            disposers.push([
-              unit as unknown as Unit,
-              unit.watch((...args) => set(updater(state, ...args))),
-            ]);
-            return store;
-          },
-          off: (unit?: Unit) => {
-            if (unit) {
-              splicer(disposers, void 0, (x) => x[0] === unit)?.[1]();
-            } else {
-              disposers.forEach((d) => d[1]());
-              disposers = [];
-            }
-            return store;
-          },
-          set,
-        }),
-  };
-  return store as unknown as Parent extends void
-    ? Store<State>
-    : StorePart<State>;
+        return store;
+      },
+      set,
+    }),
+  } as unknown as Parent extends void ? Store<State> : StorePart<State>;
+
+  return store;
 };

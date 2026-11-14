@@ -20,13 +20,13 @@ const adapt = <State>($store: SourcePart<State> | Source<State>) => {
 
       useEffect(() => {
         const $part = mapper ? $store.map(mapper) : $store;
-        const disposers = [
-          $part.subscribe((value: Selected | State) => {
-            setState(() => value as Selected);
-          }),
-          mapper && $part.off,
-        ];
-        return () => disposers.forEach((d) => d?.());
+        const dispose = $part.subscribe((value: Selected | State) => {
+          setState(() => value as Selected);
+        });
+        return () => {
+          dispose();
+          mapper && $part.off();
+        };
       }, deps);
 
       return state;

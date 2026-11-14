@@ -1,7 +1,7 @@
 import { Disposer } from "./types";
 
 export type Return<R> = [(r: R) => void, (e: Error) => void];
-export type Queue = (() => void)[];
+export type Queue = [head: number, ...items: (() => void)[]];
 export type Carrier<P = any> = (
   params: P,
   queue: Queue,
@@ -18,68 +18,43 @@ export type Command =
       Emitter,
       Command[],
       void | ((params: any) => Promise<any> | any),
-      void | ((params: any) => Promise<boolean> | boolean),
+      void | number,
     ];
 
 export type Watcher = (...args: any[]) => void;
-export type Emitter =
-  [((watcher: Watcher) => Disposer) | void, Watcher | void] | [];
+type Subscriber = (watcher: Watcher, debug?: boolean) => Disposer;
+export type Emitter = [Subscriber | void, Watcher | void] | [];
 
 export const resolver = <T>(
   param: Promise<T> | T,
   done: (v: T) => void,
   fail: (e: Error) => void,
-) => {
-  if (param instanceof Promise) {
-    param.then(done).catch(fail);
-  } else {
-    done(param);
-  }
-};
-
-export const pusher =
-  <U>(arr: U[]) =>
-  (...a: U[]) =>
-    arr.push(...a);
-
-export const awaiter = (fn: () => void) =>
-  Promise.resolve()
-    .then(fn)
-    .catch(() => {});
-
-export const splicer = <U = unknown>(
-  arr: U[],
-  a?: U,
-  compare?: (b: U) => boolean,
-) => {
-  const index = compare ? arr.findIndex(compare) : arr.indexOf(a as U);
-  return index >= 0 ? arr.splice(index, 1)[0] : void 0;
-};
+) => (param instanceof Promise ? param.then(done).catch(fail) : done(param));
 
 export const subscriber = (emitter: Emitter) => ({
   watch:
     emitter[0] ??
     ((...args) => {
       if (!emitter[0]) {
-        const subscribers: Watcher[][] = [[], []];
+        let listeners: Set<Watcher>;
+        let loggers: Set<Watcher>;
 
         emitter.push(
           //@ts-expect-error
-          (watcher: Watcher, i = 1) => {
-            !subscribers[i].includes(watcher) && subscribers[i].push(watcher);
-            return () => {
-              splicer(subscribers[i], watcher);
-            };
+          (watcher: Watcher, debug?: boolean) => {
+            const set = debug
+              ? (loggers = loggers ?? new Set()) && loggers
+              : (listeners = listeners ?? new Set()) && listeners;
+            set.add(watcher);
+            return () => set.delete(watcher);
           },
           (...args: any[]) => {
-            subscribers.forEach((watchers) =>
-              watchers.forEach((watcher) => watcher(...args)),
-            );
+            loggers?.forEach((watcher) => watcher(...args));
+            listeners?.forEach((watcher) => watcher(...args));
           },
         );
       }
 
-      //@ts-expect-error
-      return emitter[0](...args);
+      return (emitter[0] as Subscriber)(...args);
     }),
 });

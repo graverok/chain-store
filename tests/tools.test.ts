@@ -160,6 +160,7 @@ test("throttle void", async () => {
   await delay(200);
 
   expect(fn).toHaveBeenCalledTimes(4);
+  res = "";
 });
 
 test("log watch", async () => {
@@ -169,17 +170,17 @@ test("log watch", async () => {
   action.watch(handler("a1"));
   action.watch(handler("a2"));
   //@ts-expect-error;
-  action.watch(handler("da"), 0);
+  action.watch(handler("da"), true);
 
   task.watch(handler("t1"));
   task.watch(handler("t2"));
   //@ts-expect-error;
-  task.watch(handler("dt"), 0);
+  task.watch(handler("dt"), true);
 
   task.done.watch(handler("td1"));
   task.done.watch(handler("td2"));
   //@ts-expect-error;
-  task.done.watch(handler("dtd"), 0);
+  task.done.watch(handler("dtd"), true);
 
   action(10);
   expect(res).toBe("da-10 a1-10 a2-10");
@@ -193,7 +194,7 @@ test("log watch", async () => {
   $store.watch(handler("s1"));
   $store.watch(handler("s2"));
   //@ts-expect-error;
-  $store.watch(handler("ts"), 0);
+  $store.watch(handler("ts"), true);
 
   $store.set(20);
   expect(res).toBe("ts-20 s1-20 s2-20");

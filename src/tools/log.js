@@ -45,7 +45,7 @@ export const log =
               Promise.resolve().then(() => {
                 stored = [];
               });
-            }, 0),
+            }, true),
           );
         };
 
@@ -68,7 +68,7 @@ export const log =
                   : `${key}[update]`,
                 state,
               );
-            }, 0),
+            }, true),
           );
         });
 

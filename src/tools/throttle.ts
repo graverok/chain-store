@@ -2,21 +2,13 @@ export const throttle = <Params, Result>(
   delay: number,
   fn: (params: Params) => Result,
 ) => {
-  let tmr: number = 0;
-  let resolve: null | ((result: Result) => void) = null;
-  let reject: null | (() => void) = null;
-  let stored: Params | null = null;
+  let resolve: void | ((result: Result) => void);
+  let reject: void | (() => void);
+  let stored: Params;
+  let tmr: number;
 
   return (params: Params) => {
-    if (!tmr) {
-      tmr = setTimeout(() => {
-        resolve?.(fn(stored as Params));
-        resolve = null;
-        reject = null;
-        tmr = 0;
-      }, delay) as unknown as number;
-      return fn(params);
-    } else {
+    if (tmr) {
       reject?.();
       stored = params;
       return new Promise<Result>((res, rej) => {
@@ -25,11 +17,13 @@ export const throttle = <Params, Result>(
       });
     }
 
-    return new Promise<Result>((resolve, rej) => {
-      reject = rej;
-      tmr = setTimeout(() => {
-        resolve(fn(params));
-      }, delay) as unknown as number;
-    });
+    tmr = setTimeout(() => {
+      resolve?.(fn(stored as Params));
+      resolve = undefined;
+      reject = undefined;
+      tmr = 0;
+    }, delay) as unknown as number;
+
+    return fn(params);
   };
 };

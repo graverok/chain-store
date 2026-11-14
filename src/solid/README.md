@@ -5,7 +5,7 @@
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
-- Small and dependency-free: **1.01 kB** minified & brotlied with the Solid adapter included.
+- Small and dependency-free: **977 bytes** minified & brotlied with the Solid adapter included.
 - **Tools** to **sync** stores across tabs and **log** state changes to Redux DevTools.
 
 
@@ -44,11 +44,11 @@ import { createEffect } from "solid-js";
 import { $store, action, type State } from "./store";
 
 export const App = () => {
-  const page: number = $store.use((state) => state.page);
-  const data: string[] = $store.use(
+  const page = $store.use((state) => state.page);
+  const data = $store.use(
     (state: State) => state.data[page()] ?? []
   );
-  
+
   action();
 
   return (

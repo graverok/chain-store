@@ -15,14 +15,14 @@ const adapt = <State>($store: Source<State> | SourcePart<State>) => {
       const [state, setState] = createSignal<Selected>($part.get() as Selected);
 
       createEffect(() => {
-        const disposers = [
-          $part.subscribe((value: Selected | State) =>
-            setState(() => value as Selected),
-          ),
-          mapper && $part.off,
-        ];
+        const dispose = $part.subscribe((value: Selected | State) =>
+          setState(() => value as Selected),
+        );
 
-        onCleanup(() => disposers.forEach((d) => d?.()));
+        onCleanup(() => {
+          dispose();
+          mapper && $part.off();
+        });
       });
 
       return state;

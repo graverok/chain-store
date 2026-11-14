@@ -10,7 +10,7 @@
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
 - Separate adapters for **React**, **Preact**, **Solid**, **Vue**, and **Angular**; built-in support for **Svelte**;
-- Small: **793 bytes** minified & brotlied, with zero dependencies.
+- Small: **773 bytes** minified & brotlied, with zero dependencies.
 - Tools to **sync** stores across tabs, **log** state changes, and more.
 
 
@@ -632,7 +632,7 @@ Commands run synchronously, except for tasks. Tasks start after a promise delay 
 
 
 - **map**: `(mapper: <Mapped>(state: State) => Mapped): StorePart<Mapped>`<br/>
-  Creates a read-only store (without `.on`, `.off`, or `.set`) that holds the mapped value and updates automatically when the parent store changes.<br/>
+  Creates a read-only store (without `.on`, or `.set`) that holds the mapped value and updates automatically when the parent store changes.<br/>
 
 
 - **subscribe**:`(fn: (state: State) => void): Disposer`<br/>

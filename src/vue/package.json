@@ -1,7 +1,7 @@
 {
   "name": "@chain-store/vue",
   "description": "Vue adapter for chain-store, a tiny yet surprisingly powerful event-based state manager.",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "type": "module",
   "sideEffects": false,
   "peerDependencies": {

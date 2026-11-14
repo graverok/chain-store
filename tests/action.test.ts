@@ -161,3 +161,20 @@ test("action chaining lifecycle", () => {
   act2(10);
   expect(fn1).toHaveBeenLastCalledWith(20);
 });
+
+test("action map/filter => void 0", () => {
+  const action = chain<number>();
+  //@ts-expect-error
+  const act1 = action.filter(() => void 0);
+  const act2 = action.map(() => void 0);
+  const fn1 = vi.fn();
+  const fn2 = vi.fn();
+
+  act1.watch(fn1);
+  act2.watch(fn2);
+
+  action(10);
+
+  expect(fn1).toHaveBeenCalledTimes(0);
+  expect(fn2).toHaveBeenLastCalledWith(void 0);
+});

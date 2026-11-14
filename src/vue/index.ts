@@ -29,13 +29,13 @@ const adapt = <State>($store: Source<State> | SourcePart<State>) => {
         deps,
         (_: unknown, __: unknown, onCleanup: (fn: () => void) => unknown) => {
           const $part = mapper ? $store.map(mapper) : $store;
-          const disposers = [
-            $part.subscribe((value: State | Selected) => {
-              state.value = value as Selected;
-            }),
-            mapper && $part.off,
-          ];
-          onCleanup(() => disposers.forEach((d) => d?.()));
+          const dispose = $part.subscribe((value: State | Selected) => {
+            state.value = value as Selected;
+          });
+          onCleanup(() => {
+            dispose();
+            mapper && $part.off();
+          });
         },
         { immediate: true },
       );
