@@ -110,7 +110,6 @@ test("action function types", async () => {
   });
 
   fn2.watch((data) => {
-    console.log(typeof data);
     res2 = typeof data;
   });
 

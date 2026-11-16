@@ -88,14 +88,16 @@ test("supersede", async () => {
   const success = vi.fn();
   const done = vi.fn();
 
+  task.done.watch((p, r) => {
+    done(p + r);
+  });
+
   for (let i = 0; i < 10; i++) {
-    task(10).then(success).catch(fail);
     await delay(50);
+    task(10).then(success).catch(fail);
   }
 
-  task.done.watch((a, b) => {
-    done(a + b);
-  });
+  await delay();
   await delay(200);
 
   expect(fail).toHaveBeenCalledTimes(9);

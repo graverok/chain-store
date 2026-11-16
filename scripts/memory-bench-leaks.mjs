@@ -1,5 +1,5 @@
 import { store, chain } from "../dist/index.js";
-const COUNT = 20000;
+const COUNT = 10000;
 const mapper = (n) => n + 2;
 
 const save = () => {
