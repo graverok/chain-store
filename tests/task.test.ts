@@ -262,6 +262,7 @@ test("task pending sync", async () => {
   await delay();
   expect(res).toBe("t1d-20-10 t1e-10 t1d-20-10 t1e-10 t1d-20-10 t1e-10");
   res = "";
+  expect(fn).toHaveBeenCalledTimes(0);
   await delay();
   expect(fn).toHaveBeenCalledTimes(3);
 });

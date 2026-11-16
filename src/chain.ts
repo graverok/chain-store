@@ -88,6 +88,7 @@ const createTask = <Input, Params, Result>(
     em[1]?.(params);
     const duplicate = promise instanceof Promise && pending?.has(promise);
     !duplicate &&
+      promise instanceof Promise &&
       (pending = pending ?? new Set()) &&
       pending.add(promise as Promise<Result>);
 
@@ -99,9 +100,7 @@ const createTask = <Input, Params, Result>(
       !duplicate && ef[1]?.(error, params);
       ret?.[1](error as Error);
     } finally {
-      duplicate
-        ? Promise.resolve().then(() => pending.delete(promise))
-        : ee[1]?.(params);
+      duplicate ? pending.delete(promise) : ee[1]?.(params);
     }
   };
 
