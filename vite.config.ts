@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import ts from "typescript";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 
@@ -46,5 +47,12 @@ export default defineConfig({
       },
     },
   },
-  plugins: [dts()],
+  plugins: [
+    dts({
+      compilerOptions: {
+        module: ts.ModuleKind.Node16,
+        moduleResolution: ts.ModuleResolutionKind.Node16,
+      },
+    }),
+  ],
 });

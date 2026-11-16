@@ -1,5 +1,5 @@
-import { invoke, subscriber, type Config, type Return } from "./lib";
-import { Action, Task } from "./types";
+import { invoke, subscriber, type Config, type Return } from "./lib.js";
+import { Action, Task } from "./types.js";
 
 const create = <Input = void, Output = Input>(
   type: 0 | 1 | 2,

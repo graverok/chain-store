@@ -1,3 +1,3 @@
-export * from "./chain";
-export * from "./store";
-export * from "./types";
+export * from "./chain.js";
+export * from "./store.js";
+export * from "./types.js";

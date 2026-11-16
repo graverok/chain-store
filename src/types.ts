@@ -1,4 +1,4 @@
-import { Watcher } from "./lib";
+import { Watcher } from "./lib.js";
 
 export type Disposer = () => void;
 

@@ -1,4 +1,4 @@
-import { Disposer } from "./types";
+import { Disposer } from "./types.js";
 
 export type Return<R> = [(r: R) => void, (e: Error) => void];
 export type Queue = [head: number, ...items: (() => void)[]];
