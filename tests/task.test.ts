@@ -1,11 +1,13 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { chain } from "../src";
 import { delay, filter, mapper } from "./utils";
 
 let res = "";
-const handler = (p: string) => (r: any) => {
-  res = (res + ` ${p}-${JSON.stringify(r)}`).trim();
-};
+const handler =
+  (p: string) =>
+  (...r: any[]) => {
+    res = (res + ` ${p}-${r.map((x) => JSON.stringify(x)).join("-")}`).trim();
+  };
 
 test("task", async () => {
   const act1 = chain<number>();
@@ -36,19 +38,19 @@ test("task", async () => {
   res = "";
   await delay();
   // sync task1 resolves
-  expect(res).toBe("t1d-[10]");
+  expect(res).toBe("t1d-[10]-10");
   res = "";
   await delay(200);
   // async task2 resolves
-  expect(res).toBe("t3-10 t2d-24");
+  expect(res).toBe("t3-10 t2d-24-20");
   res = "";
   await delay(200);
-  expect(res).toBe("t3d-35 pt3d-35");
+  expect(res).toBe("t3d-35-10 pt3d-35");
   res = "";
 
   act1(20);
   await delay(500);
-  expect(res).toBe("a1-20 a2-40 a3-10 t1-20 t2-40 t1d-[20] t2d-48");
+  expect(res).toBe("a1-20 a2-40 a3-10 t1-20 t2-40 t1d-[20]-20 t2d-48-40");
   res = "";
 });
 
@@ -96,7 +98,7 @@ test("simultaneous task calls", async () => {
   res = "";
 
   await delay(200);
-  expect(res).toBe("t1d-10 t2d-15 t1d-20 t2d-30");
+  expect(res).toBe("t1d-10-5 t2d-15-5 t1d-20-10 t2d-30-10");
   res = "";
 
   task1(10).then(handler("pt1"));
@@ -107,13 +109,13 @@ test("simultaneous task calls", async () => {
   expect(res).toBe("t1-10 t2-10 t1-10 t2-10 t1-10 t2-10");
   res = "";
   await delay();
-  expect(res).toBe("t2d-30"); // stored resolves
+  expect(res).toBe("t2d-30-10"); // stored resolves
   res = "";
   await delay();
   expect(res).toBe("pt2-30"); // stored resolves
   res = "";
   await delay(200);
-  expect(res).toBe("t1d-20 pt1-20 pt1-20");
+  expect(res).toBe("t1d-20-10 pt1-20 pt1-20");
   res = "";
 });
 
@@ -146,7 +148,7 @@ test("task errors", async () => {
   res = "";
   await delay(200);
   expect(res).toBe(
-    `t1d-5 t1x-5 pt1-5 pxt1-"fin" t1f-"error-10" t1x-10 pft1-"error-10" pxt1-"fin"`,
+    `t1d-5-5 t1x-5 pt1-5 pxt1-"fin" t1f-"error-10"-10 t1x-10 pft1-"error-10" pxt1-"fin"`,
   );
   res = "";
 });
@@ -236,10 +238,30 @@ test("sync task", async () => {
   await delay();
   expect(res).toBe("a1-10 t1-10");
   await delay();
-  expect(res).toBe("a1-10 t1-10 t1d-20 t1e-10");
+  expect(res).toBe("a1-10 t1-10 t1d-20-10 t1e-10");
   await delay();
-  expect(res).toBe("a1-10 t1-10 t1d-20 t1e-10 et1-20");
+  expect(res).toBe("a1-10 t1-10 t1d-20-10 t1e-10 et1-20");
   await delay();
-  expect(res).toBe("a1-10 t1-10 t1d-20 t1e-10 et1-20 done");
+  expect(res).toBe("a1-10 t1-10 t1d-20-10 t1e-10 et1-20 done");
   res = "";
+});
+
+test("task pending sync", async () => {
+  const task = chain<number>().task((n) => n * 2);
+  task.watch(handler("t1"));
+  task.done.watch(handler("t1d"));
+  task.end.watch(handler("t1e"));
+  const fn = vi.fn();
+
+  task(10).then(fn);
+  task(10).then(fn);
+  task(10).then(fn);
+  await delay();
+  expect(res).toBe("t1-10 t1-10 t1-10");
+  res = "";
+  await delay();
+  expect(res).toBe("t1d-20-10 t1e-10 t1d-20-10 t1e-10 t1d-20-10 t1e-10");
+  res = "";
+  await delay();
+  expect(fn).toHaveBeenCalledTimes(3);
 });

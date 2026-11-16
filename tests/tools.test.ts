@@ -82,7 +82,7 @@ const abortiveRequest = (params: number, { signal }: { signal: AbortSignal }) =>
     }, 30);
   });
 
-test("abortive", async () => {
+test("supersede", async () => {
   const task = chain<number>().task(supersede(abortiveRequest));
   const fail = vi.fn();
   const success = vi.fn();
