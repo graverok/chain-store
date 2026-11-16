@@ -33,6 +33,18 @@ const distPackage = Object.fromEntries(
 
 const plugins = ["react", "preact", "solid", "vue", "angular"];
 
+const importData = {
+  main: "./index.cjs",
+  module: "./index.js",
+  types: "./index.d.ts",
+  exports: {
+    ".": {
+      import: { types: "./index.d.ts", default: "./index.js" },
+      require: { types: "./index.d.cts", default: "./index.cjs" },
+    },
+  },
+};
+
 for (const file of ["LICENSE"]) {
   try {
     for (const dist of [
@@ -100,14 +112,14 @@ for (const plugin of plugins) {
       ...distPackage,
       ...adapterPackage,
       keywords: [...keywords, plugin],
-      exports: {
-        ".": {
-          types: "./index.d.ts",
-          import: "./index.js",
-          require: "./index.cjs",
-        },
-      },
-      files: ["index.js", "index.cjs", "index.d.ts", "README.md"],
+      ...importData,
+      files: [
+        "index.js",
+        "index.cjs",
+        "index.d.ts",
+        "index.d.cts",
+        "README.md",
+      ],
     };
 
     await writeFile(
@@ -136,27 +148,25 @@ try {
   const content = {
     ...distPackage,
     ...toolsPackage,
-    main: "./index.cjs",
-    module: "./index.js",
-    types: "./index.d.ts",
-    exports: {
-      ".": {
-        types: "./index.d.ts",
-        import: "./index.js",
-        require: "./index.cjs",
-      },
-    },
+    ...importData,
     files: [
-      "index.cjs",
+      "index.d.cts",
       "index.d.ts",
       "index.js",
+      "index.cjs",
       "README.md",
       "log.d.ts",
+      "log.d.cts",
       "sync.d.ts",
+      "sync.d.cts",
       "dedupe.d.ts",
+      "dedupe.d.cts",
       "supersede.d.ts",
+      "supersede.d.cts",
       "throttle.d.ts",
+      "throttle.d.cts",
       "debounce.d.ts",
+      "debounce.d.cts",
     ],
   };
 
@@ -168,25 +178,21 @@ try {
 
 Object.assign(distPackage, {
   keywords: [...distPackage.keywords, ...plugins],
-  main: "./index.cjs",
-  module: "./index.js",
-  types: "./index.d.ts",
-  exports: {
-    ".": {
-      types: "./index.d.ts",
-      import: "./index.js",
-      require: "./index.cjs",
-    },
-  },
+  ...importData,
   files: [
     "chain.d.ts",
-    "index.cjs",
+    "chain.d.cts",
     "index.d.ts",
+    "index.d.cts",
     "index.js",
+    "index.cjs",
     "lib.d.ts",
+    "lib.d.cts",
     "README.md",
     "store.d.ts",
+    "store.d.cts",
     "types.d.ts",
+    "types.d.cts",
   ],
 });
 

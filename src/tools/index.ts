@@ -1,6 +1,6 @@
-export { sync } from "./sync";
-export { log } from "./log";
-export { dedupe } from "./dedupe";
-export { supersede } from "./supersede";
-export { debounce } from "./debounce";
-export { throttle } from "./throttle";
+export { sync } from "./sync.js";
+export { log } from "./log.js";
+export { dedupe } from "./dedupe.js";
+export { supersede } from "./supersede.js";
+export { debounce } from "./debounce.js";
+export { throttle } from "./throttle.js";

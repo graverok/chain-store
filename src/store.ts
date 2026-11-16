@@ -1,5 +1,5 @@
-import { subscriber, type Emitter, type Watcher } from "./lib";
-import { Disposer, Store, StorePart, Unit } from "./types";
+import { subscriber, type Emitter, type Watcher } from "./lib.js";
+import { Disposer, Store, StorePart, Unit } from "./types.js";
 
 const create = <State, Parent extends unknown | void = void>(
   initialState: State,
