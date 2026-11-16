@@ -80,7 +80,7 @@ const createTask = <Input, Params, Result>(
   const ed = [] as Emitter;
   const ef = [] as Emitter;
   const ee = [] as Emitter;
-  let pending: Set<Promise<Result>>;
+  let pending: Set<Promise<Result> | Result>;
 
   const exec = async (params: Params, ret?: Return<Result>) => {
     const promise = task(params);
