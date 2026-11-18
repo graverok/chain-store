@@ -266,3 +266,36 @@ test("task pending sync", async () => {
   await delay();
   expect(fn).toHaveBeenCalledTimes(3);
 });
+
+test("task error order", async () => {
+  const act = chain<number>();
+  act.filter((n) => !!n);
+  const task3 = act.filter((n) => !!n).task(mapper(1));
+  const task1 = act.task(mapper(1));
+  const task2 = act.map(mapper(1)).task(mapper(1));
+  const err1 = vi.fn();
+  const err2 = vi.fn();
+  const done1 = vi.fn();
+  const done2 = vi.fn();
+
+  task1(0).then(done1).catch(err1);
+  await delay(410);
+  expect(err1).not.toHaveBeenCalled();
+  expect(err2).not.toHaveBeenCalled();
+  expect(done1).toHaveBeenCalled();
+  expect(done2).not.toHaveBeenCalled();
+
+  task2(0).then(done1).catch(err1);
+  await delay(410);
+  expect(err1).not.toHaveBeenCalled();
+  expect(err2).not.toHaveBeenCalled();
+  expect(done1).toHaveBeenCalledTimes(2);
+  expect(done2).not.toHaveBeenCalled();
+
+  task3(0).then(done2).catch(err2);
+  await delay(410);
+  expect(err1).not.toHaveBeenCalled();
+  expect(err2).toHaveBeenCalled();
+  expect(done2).not.toHaveBeenCalled();
+  expect(done1).toHaveBeenCalledTimes(2);
+});
