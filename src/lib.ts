@@ -1,20 +1,18 @@
-import { Disposer } from "./types.js";
-
 export type Return<R> = [(r: R) => void, (e: Error) => void];
 export type Queue = [head: number, ...items: (() => void)[]];
 
 export type Config = [
   undefined | number,
   undefined | ((params: any) => Promise<any> | any),
-  null | Subscriber,
-  null | Watcher,
+  null | Emitter,
   null | Set<Promise<any>>,
-  ...(Config | Watcher | Subscriber)[],
+  ...(Config | Emitter)[],
 ];
 
 export type Watcher = (...args: any[]) => void;
-type Subscriber = (watcher: Watcher, debug?: boolean) => Disposer;
-export type Emitter = [Subscriber | undefined, Watcher | undefined] | [];
+export interface Emitter extends Watcher {
+  l: Set<Watcher>;
+}
 
 const resolver = <T>(
   param: Promise<T> | T,
@@ -22,25 +20,20 @@ const resolver = <T>(
   fail: (e: Error) => void,
 ) => (param instanceof Promise ? param.then(done).catch(fail) : done(param));
 
-export const subscriber = (emitter: Config | Emitter, key = 0) => ({
-  watch:
-    emitter[key] ??
-    ((watcher: Watcher) => {
-      if (!emitter[key]) {
-        let listeners: Set<Watcher>;
-
-        emitter[key] = (watcher: Watcher) => {
-          (listeners = listeners ?? new Set()).add(watcher);
-          return () => listeners.delete(watcher);
-        };
-
-        emitter[key + 1] = function (...args: any[]) {
-          listeners?.forEach((watcher) => watcher.call(this, ...args));
-        };
-      }
-
-      return (emitter[key] as Subscriber)(watcher);
-    }),
+export const subscriber = (emitter: Config | Emitter[], key = 0) => ({
+  watch: (fn: Watcher) => {
+    if (!emitter[key]) {
+      const listeners = new Set<Watcher>();
+      emitter[key] = function (...args: any[]) {
+        listeners.forEach((watcher) => watcher.call(this, ...args));
+      };
+      (emitter[key] as Emitter).l = listeners;
+    }
+    (emitter[key] as Emitter).l.add(fn);
+    return () => {
+      (emitter[key] as Emitter).l.delete(fn);
+    };
+  },
 });
 
 export const invoke = <Input>(
@@ -57,28 +50,28 @@ export const invoke = <Input>(
   };
 
   try {
-    const [type, fn, , emt, , ...rest] = config;
+    const [type, fn, emt, , ...rest] = config;
 
     return type === 2
       ? Promise.resolve().then(async () => {
           const result = (fn as Function)(input);
 
-          const unique = !(result instanceof Promise && config[4]?.has(result));
+          const unique = !(result instanceof Promise && config[3]?.has(result));
           unique &&
-            (config[4] = config[4] ?? new Set()) &&
-            config[4].add(result as Promise<any>);
+            (config[3] = config[3] ?? new Set()) &&
+            config[3].add(result as Promise<any>);
 
           try {
-            (emt as Watcher)?.(input);
+            (emt as Emitter)?.(input);
             const out = await result;
-            unique && (rest[1] as Watcher)?.(out, input);
+            unique && (rest[0] as Emitter)?.(out, input);
             caller === config && ret?.[0](out);
           } catch (error) {
-            unique && (rest[3] as Watcher)?.(error, input);
+            unique && (rest[1] as Emitter)?.(error, input);
             caller === config && ret?.[1](error as Error);
           } finally {
-            unique && (rest[5] as Watcher)?.(input);
-            config[4]?.delete(result);
+            unique && (rest[2] as Emitter)?.(input);
+            config[3]?.delete(result);
           }
         })
       : resolver(

@@ -1,7 +1,7 @@
 {
   "name": "chain-store",
-  "description": "A tiny yet surprisingly powerful state manager with event-driven stores, extensible action chains, and async workflows in just 743 bytes.",
-  "version": "0.2.0",
+  "description": "A tiny yet surprisingly powerful state manager with event-driven stores, extensible action chains, and async workflows in just 740 bytes.",
+  "version": "0.2.1",
   "author": {
     "name": "Aleksandr Gurianov",
     "url": "http://golova.pro"

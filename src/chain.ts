@@ -7,7 +7,7 @@ const create = <Input = void, Output = Input>(
   start?: Config,
   prev?: Config,
 ) => {
-  const config: Config = [type, fn, null, null, null];
+  const config: Config = [type, fn, null, null];
   prev?.push(config);
 
   return Object.assign(
@@ -27,9 +27,9 @@ const create = <Input = void, Output = Input>(
     subscriber(config, 2),
     type === 2
       ? {
-          done: subscriber(config, 5),
-          fail: subscriber(config, 7),
-          end: subscriber(config, 9),
+          done: subscriber(config, 4),
+          fail: subscriber(config, 5),
+          end: subscriber(config, 6),
         }
       : {
           map: <Result>(fn: (params: Output) => Promise<Result> | Result) =>

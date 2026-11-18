@@ -8,10 +8,10 @@ const create = <State, Parent extends unknown | void = void>(
   let ons: Map<Unit<unknown, unknown>, Disposer> | null;
   let maps: Map<(m: any) => void, (s: State) => any>;
   let state = initial;
-  const emt = [] as Emitter;
+  const emt = [] as Emitter[];
 
   const set = (next: State, ...args: any[]) => {
-    next !== state && emt[1]?.call(args, next);
+    next !== state && emt[0]?.call(args, next);
     maps?.forEach((mapper, set) => set(mapper(next)));
     state = next;
   };
