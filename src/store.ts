@@ -2,58 +2,58 @@ import { subscriber, type Emitter, type Watcher } from "./lib.js";
 import { Disposer, Store, StorePart, Unit } from "./types.js";
 
 const create = <State, Parent extends unknown | void = void>(
-  initialState: State,
-  propagate?: (set: (state: State) => void) => () => void,
+  initial: State,
+  propagate?: (set: (state: State) => void) => { off: () => void },
 ): Parent extends void ? Store<State> : StorePart<State> => {
-  let subscriptions: Map<Unit<unknown, unknown>, Disposer> | void;
-  let parts: Map<(m: any) => void, (s: State) => any>;
-  const emitter = [] as Emitter;
-  let state = initialState;
+  let ons: Map<Unit<unknown, unknown>, Disposer> | null;
+  let maps: Map<(m: any) => void, (s: State) => any>;
+  let state = initial;
+  const emt = [] as Emitter;
 
-  const set = (next: State) => {
-    const diff = next !== state;
+  const set = (next: State, ...args: any[]) => {
+    next !== state && emt[1]?.call(args, next);
+    maps?.forEach((mapper, set) => set(mapper(next)));
     state = next;
-    diff && emitter[1]?.(state);
-    parts?.forEach((mapper, set) => set(mapper(state)));
   };
 
   const store = {
     get: () => state,
-    ...subscriber(emitter),
+    ...subscriber(emt),
     subscribe: (watcher: Watcher) => {
       watcher(state);
       return store.watch(watcher);
     },
     map: <Selector>(fn: (state: State) => Selector) =>
-      create<Selector, State>(fn(state), (set) => {
-        (parts = parts ?? new Map()) && parts.set(set, fn);
-        return () => parts.delete(set);
-      }),
-    off:
-      propagate?.(set) ??
-      ((unit?: Unit) => {
+      create<Selector, State>(
+        fn(state),
+        (set) =>
+          (maps = maps ?? new Map()) &&
+          maps.set(set, fn) && {
+            off: () => maps.delete(set),
+          },
+      ),
+    ...(propagate?.(set) ?? {
+      off: (unit?: Unit) => {
         if (unit) {
-          subscriptions?.get(unit)?.();
-          subscriptions?.delete(unit);
+          ons?.get(unit)?.();
+          ons?.delete(unit);
         } else {
-          subscriptions?.forEach((d) => d());
-          subscriptions?.clear();
+          ons?.forEach((off) => off());
+          ons = null;
         }
         return store;
-      }),
-    ...(!propagate && {
+      },
       on: <P extends State, X>(
         unit: Unit<P, X>,
-        updater: (state: State, payload: P, ext: X) => State = (_, payload) =>
+        fn: (state: State, payload: P, ext: X) => State = (_, payload) =>
           payload as State,
       ) => {
-        subscriptions?.get(unit)?.();
-        (subscriptions = subscriptions ?? new Map()) &&
-          subscriptions.set(
+        ons?.get(unit)?.();
+        (ons = ons ?? new Map()) &&
+          ons.set(
             unit,
-            unit.watch((...args) => set(updater(state, ...args))),
+            unit.watch((...args) => set(fn(state, ...args), unit, ...args)),
           );
-
         return store;
       },
       set,
@@ -63,5 +63,4 @@ const create = <State, Parent extends unknown | void = void>(
   return store;
 };
 
-export const store = <State>(initialState: State) =>
-  create<State>(initialState);
+export const store = <State>(initial: State) => create<State>(initial);

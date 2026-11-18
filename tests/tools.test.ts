@@ -167,38 +167,24 @@ test("throttle void", async () => {
 
 test("log watch", async () => {
   const action = chain<number>();
-  const task = action.task(mapper(2));
+  const task = chain<number>().task(mapper(2));
+  const $store = store(0);
+  $store.on(action, (_, n) => n);
+  $store.on(task, (_, n) => n);
+  $store.on(task.done, (_, n) => n);
 
-  action.watch(handler("a1"));
-  action.watch(handler("a2"));
-  //@ts-expect-error;
-  action.watch(handler("da"), true);
+  const fn = vi.fn();
 
-  task.watch(handler("t1"));
-  task.watch(handler("t2"));
-  //@ts-expect-error;
-  task.watch(handler("dt"), true);
-
-  task.done.watch(handler("td1"));
-  task.done.watch(handler("td2"));
-  //@ts-expect-error;
-  task.done.watch(handler("dtd"), true);
+  $store.watch(function (this: any, state) {
+    const [unit, ...params] = this ?? [];
+    fn(state, typeof unit?.watch === "function", ...params);
+  });
 
   action(10);
-  expect(res).toBe("da-10 a1-10 a2-10");
+  expect(fn).toHaveBeenLastCalledWith(10, true, 10);
+  task(20);
   await delay();
-  expect(res).toBe("da-10 a1-10 a2-10 dt-10 t1-10 t2-10");
+  expect(fn).toHaveBeenLastCalledWith(20, true, 20);
   await delay(200);
-  expect(res).toBe("da-10 a1-10 a2-10 dt-10 t1-10 t2-10 dtd-20 td1-20 td2-20");
-  res = "";
-
-  const $store = store(10);
-  $store.watch(handler("s1"));
-  $store.watch(handler("s2"));
-  //@ts-expect-error;
-  $store.watch(handler("ts"), true);
-
-  $store.set(20);
-  expect(res).toBe("ts-20 s1-20 s2-20");
-  res = "";
+  expect(fn).toHaveBeenLastCalledWith(40, true, 40, 20);
 });

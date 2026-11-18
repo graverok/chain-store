@@ -1,5 +1,8 @@
+import { voider } from "./shared.js";
+
 export const sync = (...args) => {
-  if (args.length === 0) return () => void 0;
+  if (args.length === 0) return voider;
+
   try {
     const stores = Object.entries(args.splice(0, 1)[0] ?? {}).filter(
       ([_, unit]) =>
@@ -8,7 +11,7 @@ export const sync = (...args) => {
     let i = args.findIndex((p) => typeof p === "string");
     const scope = i === -1 ? "" : args.splice(i, 1)[0];
 
-    if (!stores.length) return;
+    if (!stores.length) return voider;
     const deps = args.splice(0, 1)[0];
     const match =
       args.splice(0, 1)[0] ??
@@ -38,6 +41,6 @@ export const sync = (...args) => {
     disposers.push(channel.close);
     return () => disposers.forEach((d) => d());
   } catch {
-    return () => void 0;
+    return voider;
   }
 };
