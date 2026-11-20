@@ -1,4 +1,4 @@
-import { invoke, subscriber, type Config, type Return } from "./lib.js";
+import { invoke, subscriber, type Config, type External } from "./lib.js";
 import { Action, Task } from "./types.js";
 
 const create = <Input = void, Output = Input>(
@@ -12,26 +12,21 @@ const create = <Input = void, Output = Input>(
 
   return Object.assign(
     (input: Input) => {
-      let ret: Return<Output> | undefined = void 0;
-      let promise: Promise<Output> | undefined = void 0;
+      let external: External | undefined = void 0;
+      let promise: Promise<unknown> | undefined = void 0;
       if (type === 2) {
-        ret = [] as unknown as Return<Output>;
-        promise = new Promise((...args) =>
-          (ret as Return<Output>).push(...args),
+        external = [] as unknown as External;
+        promise = new Promise<unknown>((...args) =>
+          (external as External).push(...args),
         );
         promise.catch(() => {});
       }
-      invoke(input, [1], start ?? config, config, ret);
+      invoke(input, [1], start ?? config, config, external);
       return promise;
     },
     subscriber(config, 2),
-    type === 2
+    type !== 2
       ? {
-          done: subscriber(config, 4),
-          fail: subscriber(config, 5),
-          end: subscriber(config, 6),
-        }
-      : {
           map: <Result>(fn: (params: Output) => Promise<Result> | Result) =>
             create<Input, Result>(0, fn, start ?? config, config) as Action<
               Input,
@@ -48,6 +43,11 @@ const create = <Input = void, Output = Input>(
               Output,
               Result
             >,
+        }
+      : {
+          done: subscriber(config, 4),
+          fail: subscriber(config, 5),
+          end: subscriber(config, 6),
         },
   );
 };

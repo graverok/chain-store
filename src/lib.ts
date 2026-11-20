@@ -1,30 +1,30 @@
-export type Return<R> = [(r: R) => void, (e: Error) => void];
-export type Queue = [head: number, ...items: (() => void)[]];
+export type External = [(result: unknown) => void, (error: Error) => void];
+export type Queue = [head: number, ...configs: (() => void)[]];
 
 export type Config = [
   undefined | number,
-  undefined | ((params: any) => Promise<any> | any),
+  undefined | (<T>(params: T) => Promise<T> | T),
   null | Emitter,
-  ...(Config | Emitter | Set<Promise<any>>)[],
+  ...(Config | Emitter | Set<Promise<unknown>>)[],
 ];
 
-export type Watcher = (...args: any[]) => void;
+export type Watcher = (...args: unknown[]) => void;
 export interface Emitter extends Watcher {
   l: Set<Watcher>;
 }
 
 const resolver = <T>(
-  param: Promise<T> | T,
+  payload: Promise<T> | T,
   done: (v: T) => void,
   fail: (e: Error) => void,
   end?: () => void,
 ) => {
   try {
-    (param instanceof Promise
-      ? param
+    (payload instanceof Promise
+      ? payload
       : end
-        ? Promise.resolve(param)
-        : done(param)
+        ? Promise.resolve(payload)
+        : done(payload)
     )
       ?.then(done, fail)
       .finally(end);
@@ -36,11 +36,11 @@ const resolver = <T>(
 export const subscriber = (emitter: Config | Emitter[], key = 0) => ({
   watch: (fn: Watcher) => {
     if (!emitter[key]) {
-      const listeners = new Set<Watcher>();
-      emitter[key] = function (...args: any[]) {
-        listeners.forEach((watcher) => watcher.call(this, ...args));
-      };
-      (emitter[key] as Emitter).l = listeners;
+      const watchers = new Set<Watcher>();
+      emitter[key] = function (this: unknown, ...args: unknown[]) {
+        watchers.forEach((watcher) => watcher.call(this, ...args));
+      } as Emitter;
+      (emitter[key] as Emitter).l = watchers;
     }
     (emitter[key] as Emitter).l.add(fn);
     return () => {
@@ -50,61 +50,59 @@ export const subscriber = (emitter: Config | Emitter[], key = 0) => ({
 });
 
 export const invoke = (
-  input: any,
+  payload: unknown,
   queue: Queue,
   config: Config,
-  caller?: Config,
-  ret?: Return<any>,
+  init?: Config,
+  external?: External,
   error?: Error | undefined,
 ) => {
   const [type, fn, emt, ...rest] = config;
 
-  const blocker = (error: Error) => (error.name = "ChainFilter") && error;
-
-  const forward = (out: any, err?: Error | undefined) => {
-    if (type === 2) return caller === config && ret?.[1](err as Error);
-    (rest as Config[])?.forEach((config) =>
-      queue.push(() => invoke(out, queue, config, caller, ret, err)),
+  const forward = (out: unknown, error?: Error | undefined) => {
+    if (type === 2) return init === config && external?.[1](error as Error);
+    (rest as Config[]).forEach((config) =>
+      queue.push(() => invoke(out, queue, config, init, external, error)),
     );
-    rest?.forEach(() => (queue[queue[0]++] as () => void)());
+    rest.forEach(() => (queue[queue[0]++] as () => void)());
   };
 
   return error
-    ? forward(input, error)
+    ? forward(payload, error)
     : type === 2
       ? (() => {
-          (emt as Emitter)?.(input);
-
-          const result = (fn as Function)(input);
-
+          const response = (fn as Function)(payload);
+          (emt as Emitter)?.(payload);
           if (!(
-            result instanceof Promise &&
-            (config[3] as Set<Promise<unknown>>)?.has(result)
+            response instanceof Promise &&
+            (config[3] as Set<Promise<unknown>>)?.has(response)
           )) {
             (config[3] = config[3] ?? new Set()) &&
-              (config[3] as Set<Promise<unknown>>).add(
-                result as Promise<unknown>,
-              );
-
+              (config[3] as Set<Promise<unknown>>).add(response);
             resolver(
-              result,
-              (out) => (rest[1] as Emitter)?.(out, input),
-              (error) => (rest[2] as Emitter)?.(error, input),
+              response,
+              (result) => (rest[1] as Emitter)?.(result, payload),
+              (error) => (rest[2] as Emitter)?.(error, payload),
               () => {
-                (rest[3] as Emitter)?.(input);
-                (config[3] as Set<Promise<unknown>>)?.delete(result);
+                (rest[3] as Emitter)?.(payload);
+                (config[3] as Set<Promise<unknown>>)?.delete(response);
               },
             );
           }
-          caller === config && ret && resolver(result, ...ret, () => {});
+          init === config &&
+            external &&
+            resolver(response, ...external, () => {});
         })()
       : resolver(
-          fn ? fn(input) : input,
+          fn ? fn(payload) : payload,
           (result) =>
             type && !result
-              ? forward(input, blocker(new Error()))
-              : (emt?.(type ? input : result) || 1) &&
-                forward(type ? input : result),
-          (err) => forward(input, err),
+              ? forward(
+                  payload,
+                  Object.assign(new Error(), { name: "ChainFilter" }),
+                )
+              : (emt?.(type ? payload : result) || 1) &&
+                forward(type ? payload : result),
+          (error) => forward(payload, error),
         );
 };

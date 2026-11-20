@@ -28,9 +28,9 @@ test("task", async () => {
   task3.watch(handler("t3"));
   task3.done.watch(handler("t3d"));
 
-  const promise = task3(10);
-  promise.then(handler("pt3d")).catch(() => {});
-
+  task3(10)
+    .then(handler("pt3d"))
+    .catch(() => {});
   expect(res).toBe("a1-10 t1-10 a2-20 t2-20");
 
   res = "";
@@ -48,9 +48,19 @@ test("task", async () => {
   expect(res).toBe("t3d-35-10 pt3d-35");
 
   res = "";
-  act1(20);
-  await delay(500);
-  expect(res).toBe("a1-20 t1-20 a2-40 t2-40 a3-10 t1d-[20]-20 t2d-48-40");
+  task1(20)
+    .then(handler("pt1d"))
+    .catch(() => {});
+  expect(res).toBe("a1-20 t1-20 a2-40 t2-40");
+  await delay();
+  expect(res).toBe("a1-20 t1-20 a2-40 t2-40 a3-10 t1d-[20]-20");
+  await delay();
+  expect(res).toBe("a1-20 t1-20 a2-40 t2-40 a3-10 t1d-[20]-20 pt1d-[20]");
+
+  await delay(400);
+  expect(res).toBe(
+    "a1-20 t1-20 a2-40 t2-40 a3-10 t1d-[20]-20 pt1d-[20] t2d-48-40",
+  );
 });
 
 test("simultaneous task calls", async () => {
@@ -207,7 +217,8 @@ test("multiple task().promise", async () => {
   const task1 = act.task((n) => n * 2);
   const task2 = act.filter(async (n) => n > 0).task((n) => n * 3);
 
-  task1(20).then(handler("pt1"));
+  const prom = task1(20);
+  prom.then(handler("pt1"));
   await delay();
   await delay();
   expect(res).toBe(`pt1-40`);
@@ -218,6 +229,11 @@ test("multiple task().promise", async () => {
   await delay();
   await delay();
   expect(res).toBe(`pt2-60`);
+
+  res = "";
+  prom.then(handler("pt1"));
+  await delay();
+  expect(res).toBe(`pt1-40`);
 });
 
 test("sync task", async () => {

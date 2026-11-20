@@ -5,7 +5,7 @@
 - Asynchronous tasks for business logic;
 - Independent stores that can be watched in full or in part;
 - Customizable synchronization between stores, actions, and tasks;
-- Small and dependency-free: **947 bytes** minified & brotlied with the Solid adapter included.
+- Small and dependency-free: **939 bytes** minified & brotlied with the Solid adapter included.
 - **Tools** to **sync** stores across tabs and **log** state changes to Redux DevTools.
 
 
