@@ -8,12 +8,12 @@ const handler = (p: string) => (r: any) => {
 };
 
 test("store", async () => {
+  res = "";
   const fn1 = chain<number>();
   const act1 = fn1.task(mapper(2));
   const $store = store(0);
 
   $store.on(fn1, (state, n) => state + n).on(act1.done, (_, result) => result);
-
   $store.watch(handler("s"));
 
   fn1(0);
@@ -39,20 +39,18 @@ test("store", async () => {
 
   expect(res).toBe(`s-1 s-6 s-0 s-2 s-10 s-20`);
   expect($store.get()).toBe(20);
-  res = "";
 
+  res = "";
   $store.set(100);
   expect(res).toBe("s-100");
   expect($store.get()).toBe(100);
-  res = "";
 });
 
 test("store unwatch", async () => {
+  res = "";
   const fn1 = chain();
   const $store = store(0);
-
   $store.on(fn1, (state) => state + 1);
-
   const unwatch = $store.subscribe((s) => {
     handler("s")(s);
     if (s === 2) unwatch();
@@ -68,17 +66,17 @@ test("store unwatch", async () => {
     handler("s")(s);
     if (s === 2) unwatch();
   });
+
   res = "";
   fn1();
   expect(res).toBe("s-4");
-
   $store.off(fn1);
   fn1();
   expect(res).toBe("s-4");
-  res = "";
 });
 
 test("store off()", () => {
+  res = "";
   const fn1 = chain<number>();
   const fn2 = chain<string>();
   const $store = store({ n: 0, s: "x" })
@@ -94,14 +92,14 @@ test("store off()", () => {
   $store.off();
   fn1(10);
   expect(res).toBe(`s-5:x s-5:test`);
-  res = "";
 
+  res = "";
   $store.set({ n: 100, s: "store" });
   expect(res).toBe(`s-100:store`);
-  res = "";
 });
 
 test("store mutability", async () => {
+  res = "";
   type User = { name: string };
   type State = { user: User };
   const state = chain<State>();
@@ -129,45 +127,45 @@ test("store mutability", async () => {
 
   user({ name: "test" });
   expect(res).toBe(`user-change name-change`);
-  res = "";
 
+  res = "";
   name("aleks");
   expect(res).toBe(`name-change`);
-  res = "";
 
+  res = "";
   user({ name: "aleks" });
   expect(res).toBe(`user-change`);
-  res = "";
 
+  res = "";
   user($user.get());
   expect(res).toBe("");
-  res = "";
 
+  res = "";
   state({ user: $user.get() });
   expect(res).toBe(`state-change`);
-  res = "";
 
+  res = "";
   state({ user: { name: "aleks" } });
   expect(res).toBe(`state-change user-change`);
-  res = "";
 
+  res = "";
   state($store.get());
   expect(res).toBe("");
-  res = "";
 
+  res = "";
   $store.set({ user: $user.get() });
   expect(res).toBe("state-change");
-  res = "";
 
+  res = "";
   $store.set($store.get());
   expect(res).toBe("");
 
   $store.set({ user: { name: "aleks" } });
   expect(res).toBe("state-change user-change");
-  res = "";
 });
 
 test("store subscription", async () => {
+  res = "";
   const $name = store("aleks");
   const $user = store({ name: $name.get() });
 
@@ -181,17 +179,16 @@ test("store subscription", async () => {
   name("john");
   expect($name.get()).toEqual("john");
   expect($user.get()).toEqual({ name: "john" });
-  res = "";
 });
 
 test("store types", async () => {
+  res = "";
   const $fn = store(() => handler("s1")("run"));
   const $fnm = $fn.map((s) => s);
   $fnm.get()();
 
   expect(typeof $fnm.get()).toBe("function");
   expect(res).toBe("s1-run");
-  res = "";
 
   const $num = store(10);
   const $numm = $num.map((s) => s);
@@ -218,6 +215,7 @@ test("store types", async () => {
 });
 
 test("part stores", async () => {
+  res = "";
   const $store = store({ name: "aleks" });
 
   const mapper = vi.fn((user: { name: string }) => user.name);

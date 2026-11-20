@@ -10,6 +10,7 @@ const handler =
   };
 
 test("task", async () => {
+  res = "";
   const act1 = chain<number>();
   const act3 = act1.map((n) => new Promise((resolve) => resolve(n - 10)));
   const task1 = act1.task((n) => [n]);
@@ -31,30 +32,34 @@ test("task", async () => {
   promise.then(handler("pt3d")).catch(() => {});
 
   expect(res).toBe("a1-10 a2-20");
+
   res = "";
   await delay();
   // first async calls. async act1, task1, task2 gets params
   expect(res).toBe("a3-0 t1-10 t2-20");
+
   res = "";
   await delay();
   // sync task1 resolves
   expect(res).toBe("t1d-[10]-10");
+
   res = "";
   await delay(200);
   // async task2 resolves
   expect(res).toBe("t3-10 t2d-24-20");
+
   res = "";
   await delay(200);
   expect(res).toBe("t3d-35-10 pt3d-35");
-  res = "";
 
+  res = "";
   act1(20);
   await delay(500);
   expect(res).toBe("a1-20 a2-40 a3-10 t1-20 t2-40 t1d-[20]-20 t2d-48-40");
-  res = "";
 });
 
 test("simultaneous task calls", async () => {
+  res = "";
   const pending: Record<number, Promise<number> | void> = {};
   const stored: Record<number, Promise<number> | void> = {};
 
@@ -95,28 +100,29 @@ test("simultaneous task calls", async () => {
 
   await delay();
   expect(res).toBe("t1-5 t2-5 t1-10 t2-10 t1-5 t2-5 t1-10 t2-10");
-  res = "";
 
+  res = "";
   await delay(200);
   expect(res).toBe("t1d-10-5 t2d-15-5 t1d-20-10 t2d-30-10");
-  res = "";
 
+  res = "";
   task1(10).then(handler("pt1"));
   task1(10).then(handler("pt1"));
   task2(10).then(handler("pt2"));
-
   await delay();
   expect(res).toBe("t1-10 t2-10 t1-10 t2-10 t1-10 t2-10");
+
   res = "";
   await delay();
   expect(res).toBe("t2d-30-10"); // stored resolves
+
   res = "";
   await delay();
   expect(res).toBe("pt2-30"); // stored resolves
+
   res = "";
   await delay(200);
   expect(res).toBe("t1d-20-10 pt1-20 pt1-20");
-  res = "";
 });
 
 const error = (x: number) => (n: number) => {
@@ -126,6 +132,7 @@ const error = (x: number) => (n: number) => {
 };
 
 test("task errors", async () => {
+  res = "";
   const task1 = chain<number>().task(error(10));
 
   task1.watch(handler("t1"));
@@ -145,15 +152,16 @@ test("task errors", async () => {
   expect(res).toBe("");
   await delay();
   expect(res).toBe("t1-5 t1-10");
+
   res = "";
   await delay(200);
   expect(res).toBe(
     `t1d-5-5 t1x-5 pt1-5 pxt1-"fin" t1f-"error-10"-10 t1x-10 pft1-"error-10" pxt1-"fin"`,
   );
-  res = "";
 });
 
 test("task().promise", async () => {
+  res = "";
   const task1 = chain<number>().task(error(10));
 
   task1(20).then(handler("pt1"));
@@ -161,8 +169,8 @@ test("task().promise", async () => {
   await delay();
   await delay(200);
   expect(res).toBe(`pt1-20 et1-"error-10"`);
-  res = "";
 
+  res = "";
   const success = task1(20);
   const fail = task1(10);
   await delay(300);
@@ -170,8 +178,8 @@ test("task().promise", async () => {
   fail.catch(handler("et1")); // rejected promise
   await delay();
   expect(res).toBe(`pt1-20 et1-"error-10"`);
-  res = "";
 
+  res = "";
   const task2 = chain<number>()
     .filter((n) => n > 0)
     .task(error(20));
@@ -186,26 +194,26 @@ test("task().promise", async () => {
   await delay();
   await delay(200);
   expect(res).toBe("t1-30");
-  res = "";
 
+  res = "";
   task2(20).catch(handler("t1"));
   await delay();
   await delay(200);
   expect(res).toBe(`t1-"error-20"`);
-  res = "";
 
-  task2(-10).catch((err) => handler("t2")(err.name));
+  res = "";
+  task2(-10).catch((err: Error) => handler("t2")(err.name));
   await delay();
   expect(res).toBe(`t2-"ChainFilter"`);
-  res = "";
 
-  task3(10).catch((err) => handler("t3")(err.name));
-  await delay();
-  expect(res).toBe(`t3-"ChainError"`);
   res = "";
+  task3(10).catch((err: Error) => handler("t3")(err.name));
+  await delay();
+  expect(res).toBe(`t3-"Error"`);
 });
 
 test("multiple task().promise", async () => {
+  res = "";
   const act = chain<number>();
   const task1 = act.task((n) => n * 2);
   const task2 = act.filter(async (n) => n > 0).task((n) => n * 3);
@@ -213,15 +221,15 @@ test("multiple task().promise", async () => {
   task1(20).then(handler("pt1"));
   await delay(10);
   expect(res).toBe(`pt1-40`);
-  res = "";
 
+  res = "";
   task2(20).then(handler("pt2"));
   await delay(10);
   expect(res).toBe(`pt2-60`);
-  res = "";
 });
 
 test("sync task", async () => {
+  res = "";
   const act1 = chain<number>();
   const task1 = act1.task((n) => n * 2);
   act1.watch(handler("a1"));
@@ -243,10 +251,10 @@ test("sync task", async () => {
   expect(res).toBe("a1-10 t1-10 t1d-20-10 t1e-10 et1-20");
   await delay();
   expect(res).toBe("a1-10 t1-10 t1d-20-10 t1e-10 et1-20 done");
-  res = "";
 });
 
 test("task pending sync", async () => {
+  res = "";
   const task = chain<number>().task((n) => n * 2);
   task.watch(handler("t1"));
   task.done.watch(handler("t1d"));
@@ -258,9 +266,11 @@ test("task pending sync", async () => {
   task(10).then(fn);
   await delay();
   expect(res).toBe("t1-10 t1-10 t1-10");
+
   res = "";
   await delay();
   expect(res).toBe("t1d-20-10 t1e-10 t1d-20-10 t1e-10 t1d-20-10 t1e-10");
+
   res = "";
   expect(fn).toHaveBeenCalledTimes(0);
   await delay();

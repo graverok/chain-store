@@ -9,6 +9,7 @@ const handler = (p: string) => (r: any) => {
 };
 
 test("dedupe", async () => {
+  res = "";
   const task = chain<number>().task(dedupe(mapper(2)));
   const fn = vi.fn();
 
@@ -31,14 +32,13 @@ test("dedupe", async () => {
   await delay(100);
   expect(res).toBe("t-10 t-10 t-20 t-10 td-20 td-40");
   expect(fn).toHaveBeenCalledTimes(4);
-
-  res = "";
 });
 
 const request = ({ n }: { n: number }) =>
   new Promise((resolve) => setTimeout(() => resolve(n), 200));
 
 test("dedupe compare", async () => {
+  res = "";
   const fn = vi.fn();
 
   const task1 = chain<{ n: number }>().task(dedupe(request));
@@ -54,8 +54,8 @@ test("dedupe compare", async () => {
   task1({ n: 10 }).then(fn);
   await delay(201);
   expect(res).toBe("t1-10 t1-10");
-  res = "";
 
+  res = "";
   task2({ n: 10 }).then(fn);
   await delay(50);
   task2({ n: 20 }).then(fn);
@@ -64,7 +64,6 @@ test("dedupe compare", async () => {
   await delay(201);
   expect(res).toBe("t2-10 t2-20");
   expect(fn).toHaveBeenCalledTimes(5);
-  res = "";
 });
 
 const abortiveRequest = (params: number, { signal }: { signal: AbortSignal }) =>
@@ -121,6 +120,7 @@ test("debounce", async () => {
 });
 
 test("throttle", async () => {
+  res = "";
   const action = chain<number>().map(throttle(200, (n) => n * 2));
 
   action.watch(handler("a1"));
@@ -140,10 +140,10 @@ test("throttle", async () => {
   expect(res).toBe("a1-20 a1-50 a1-60");
   await delay(100);
   expect(res).toBe("a1-20 a1-50 a1-60 a1-70");
-  res = "";
 });
 
 test("throttle void", async () => {
+  res = "";
   const action = chain().map(throttle(200, (n) => n));
   const fn = vi.fn();
 
@@ -162,7 +162,6 @@ test("throttle void", async () => {
   await delay(200);
 
   expect(fn).toHaveBeenCalledTimes(4);
-  res = "";
 });
 
 test("log watch", async () => {

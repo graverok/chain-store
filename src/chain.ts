@@ -7,7 +7,7 @@ const create = <Input = void, Output = Input>(
   start?: Config,
   prev?: Config,
 ) => {
-  const config: Config = [type, fn, null, null];
+  const config: Config = [type, fn, null];
   prev?.push(config);
 
   return Object.assign(

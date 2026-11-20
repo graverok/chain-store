@@ -5,8 +5,7 @@ export type Config = [
   undefined | number,
   undefined | ((params: any) => Promise<any> | any),
   null | Emitter,
-  null | Set<Promise<any>>,
-  ...(Config | Emitter)[],
+  ...(Config | Emitter | Set<Promise<any>>)[],
 ];
 
 export type Watcher = (...args: any[]) => void;
@@ -18,7 +17,18 @@ const resolver = <T>(
   param: Promise<T> | T,
   done: (v: T) => void,
   fail: (e: Error) => void,
-) => (param instanceof Promise ? param.then(done).catch(fail) : done(param));
+  awaited?: number,
+) => {
+  try {
+    param instanceof Promise
+      ? param.then(done).catch(fail)
+      : awaited
+        ? Promise.resolve(param).then(done)
+        : done(param);
+  } catch (err) {
+    fail(err as Error);
+  }
+};
 
 export const subscriber = (emitter: Config | Emitter[], key = 0) => ({
   watch: (fn: Watcher) => {
@@ -36,58 +46,65 @@ export const subscriber = (emitter: Config | Emitter[], key = 0) => ({
   },
 });
 
-export const invoke = <Input>(
-  input: Input,
+export const invoke = (
+  input: any,
   queue: Queue,
   config: Config,
   caller?: Config,
   ret?: Return<any>,
+  error?: Error | undefined,
 ) => {
-  const catcher = (error?: Error) => {
-    let err = error ?? new Error();
-    err.name = error ? "ChainError" : "ChainFilter";
-    ret?.[1](err);
+  const [type, fn, emt, ...rest] = config;
+
+  const blocker = (error: Error) => (error.name = "ChainFilter") && error;
+
+  const forward = (out: any, err?: Error | undefined) => {
+    if (type === 2) return caller === config && ret?.[1](err as Error);
+    (rest as Config[])?.forEach((config) =>
+      queue.push(() => invoke(out, queue, config, caller, ret, err)),
+    );
+    rest?.forEach(() => (queue[queue[0]++] as () => void)());
   };
 
-  try {
-    const [type, fn, emt, , ...rest] = config;
-
-    return type === 2
-      ? Promise.resolve().then(async () => {
+  return error
+    ? forward(input, error)
+    : type === 2
+      ? Promise.resolve().then(() => {
           const result = (fn as Function)(input);
 
-          const unique = !(result instanceof Promise && config[3]?.has(result));
+          const unique = !(
+            result instanceof Promise && (config[3] as Set<any>)?.has(result)
+          );
           unique &&
             (config[3] = config[3] ?? new Set()) &&
-            config[3].add(result as Promise<any>);
+            (config[3] as Set<any>).add(result as Promise<any>);
 
-          try {
-            (emt as Emitter)?.(input);
-            const out = await result;
-            unique && (rest[0] as Emitter)?.(out, input);
-            caller === config && ret?.[0](out);
-          } catch (error) {
-            unique && (rest[1] as Emitter)?.(error, input);
-            caller === config && ret?.[1](error as Error);
-          } finally {
-            unique && (rest[2] as Emitter)?.(input);
-            config[3]?.delete(result);
-          }
+          (emt as Emitter)?.(input);
+
+          unique &&
+            resolver(
+              result,
+              (out) => {
+                (rest[1] as Emitter)?.(out, input);
+                (rest[3] as Emitter)?.(input);
+                (config[3] as Set<any>)?.delete(result);
+              },
+              (error) => {
+                (rest[2] as Emitter)?.(error, input);
+                (rest[3] as Emitter)?.(input);
+                (config[3] as Set<any>)?.delete(result);
+              },
+              1,
+            );
+          caller === config && ret && resolver(result, ...ret, 1);
         })
       : resolver(
           fn ? fn(input) : input,
-          (result) => {
-            if (type && !result) return catcher();
-            const out = type ? input : result;
-            emt?.(out);
-            (rest as Config[]).forEach((config) =>
-              queue.push(() => invoke(out, queue, config, caller, ret)),
-            );
-            rest.forEach(() => (queue[queue[0]++] as () => void)());
-          },
-          catcher,
+          (result) =>
+            type && !result
+              ? forward(input, blocker(new Error()))
+              : (emt?.(type ? input : result) || 1) &&
+                forward(type ? input : result),
+          (err) => forward(input, err),
         );
-  } catch (err) {
-    catcher(err as Error);
-  }
 };

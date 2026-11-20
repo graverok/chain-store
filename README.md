@@ -159,9 +159,7 @@ getUsers(1).then(() => {
 })
 ```
 
-Unlike emissions, which can be stopped by errors in filtering or mapping, 
-the promise returned by a task call rejects with a `ChainFilter` or `ChainError`, 
-respectively.
+Unlike emission, which stops when filtered out, the promise returned by a task call rejects with `ChainFilter` error.
 
 ```ts
 const filter = chain<number>()
@@ -169,7 +167,8 @@ const filter = chain<number>()
   .task(...);
 
 task(0)
-  .catch(err => console.log(err.name));   //=> "ChainFilter"
+  .catch((err) => console.log(err.name)); //=> "ChainFilter"
+
 ```
 
 <br/>

@@ -8,6 +8,7 @@ const handler = (p: string) => (r: any) => {
 };
 
 test("action chaining and disposing", () => {
+  res = "";
   const fn1 = chain<number>();
   const fn2 = fn1.filter((n) => n !== 20);
   const fn3 = fn1.map((n) => n + 3);
@@ -33,19 +34,19 @@ test("action chaining and disposing", () => {
 
   fn1(10);
   expect(res).toBe("f1-10 f2-10 f3-13 f4-14 f9-19 f5-18 f6-20 f8-26 f7-27");
-  res = "";
 
+  res = "";
   fn1(20);
   expect(res).toBe("f3-23 f5-28 f8-36");
-  res = "";
 
+  res = "";
   dis2();
   fn1(15);
   expect(res).toBe("f3-18 f4-19 f9-24 f5-23 f6-25 f8-31 f7-32");
-  res = "";
 });
 
 test("action async fns", async () => {
+  res = "";
   const fn1 = chain<number>();
   const fn2 = fn1.map(mapper(2)); // 200
   const fn3 = fn1.map(mapper(3)).map(mapper(4)); //200
@@ -64,8 +65,8 @@ test("action async fns", async () => {
   expect(res).toBe("f1-20 f2-40");
   await delay(200);
   expect(res).toEqual("f1-20 f2-40 f4-200 f5-40 f3-240");
-  res = "";
 
+  res = "";
   fn1(10);
   dispose(); // dispose after call
 
@@ -74,10 +75,10 @@ test("action async fns", async () => {
   expect(res).toBe("f1-10");
   await delay(200);
   expect(res).toBe("f1-10 f4-100 f3-120");
-  res = "";
 });
 
 test("simultaneous action calls", async () => {
+  res = "";
   const fn1 = chain<number>();
   const fn2 = fn1.map(mapper(2));
   const fn3 = fn1.filter(filter(10));
@@ -94,7 +95,6 @@ test("simultaneous action calls", async () => {
   expect(res).toBe("f1-5 f1-5 f1-10 f1-10");
   await delay(200);
   expect(res).toBe("f1-5 f1-5 f1-10 f1-10 f2-10 f3-5 f2-10 f3-5 f2-20 f2-20");
-  res = "";
 });
 
 test("action function types", async () => {
