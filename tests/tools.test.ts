@@ -24,8 +24,6 @@ test("dedupe", async () => {
   await delay(50);
   task(10).then(fn);
 
-  expect(res).toBe("t-10 t-10 t-20");
-  await delay();
   expect(res).toBe("t-10 t-10 t-20 t-10");
   await delay(50);
   expect(res).toBe("t-10 t-10 t-20 t-10 td-20");
@@ -52,7 +50,7 @@ test("dedupe compare", async () => {
   task1({ n: 10 }).then(fn);
   await delay(50);
   task1({ n: 10 }).then(fn);
-  await delay(201);
+  await delay(200);
   expect(res).toBe("t1-10 t1-10");
 
   res = "";

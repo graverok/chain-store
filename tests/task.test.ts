@@ -31,21 +31,16 @@ test("task", async () => {
   const promise = task3(10);
   promise.then(handler("pt3d")).catch(() => {});
 
-  expect(res).toBe("a1-10 a2-20");
+  expect(res).toBe("a1-10 t1-10 a2-20 t2-20");
 
   res = "";
   await delay();
-  // first async calls. async act1, task1, task2 gets params
-  expect(res).toBe("a3-0 t1-10 t2-20");
-
-  res = "";
-  await delay();
-  // sync task1 resolves
-  expect(res).toBe("t1d-[10]-10");
+  // first async calls: async act1. task1 resolves as micro-task
+  expect(res).toBe("a3-0 t1d-[10]-10");
 
   res = "";
   await delay(200);
-  // async task2 resolves
+  // async task2 resolves, async×2 task3 gets params
   expect(res).toBe("t3-10 t2d-24-20");
 
   res = "";
@@ -55,7 +50,7 @@ test("task", async () => {
   res = "";
   act1(20);
   await delay(500);
-  expect(res).toBe("a1-20 a2-40 a3-10 t1-20 t2-40 t1d-[20]-20 t2d-48-40");
+  expect(res).toBe("a1-20 t1-20 a2-40 t2-40 a3-10 t1d-[20]-20 t2d-48-40");
 });
 
 test("simultaneous task calls", async () => {
@@ -98,7 +93,6 @@ test("simultaneous task calls", async () => {
   task1(5);
   task1(10);
 
-  await delay();
   expect(res).toBe("t1-5 t2-5 t1-10 t2-10 t1-5 t2-5 t1-10 t2-10");
 
   res = "";
@@ -109,7 +103,6 @@ test("simultaneous task calls", async () => {
   task1(10).then(handler("pt1"));
   task1(10).then(handler("pt1"));
   task2(10).then(handler("pt2"));
-  await delay();
   expect(res).toBe("t1-10 t2-10 t1-10 t2-10 t1-10 t2-10");
 
   res = "";
@@ -149,8 +142,6 @@ test("task errors", async () => {
     .catch(handler("pft1"))
     .finally(() => handler("pxt1")("fin"));
 
-  expect(res).toBe("");
-  await delay();
   expect(res).toBe("t1-5 t1-10");
 
   res = "";
@@ -191,13 +182,11 @@ test("task().promise", async () => {
     .task(error(20));
 
   task2(30).then(handler("t1"));
-  await delay();
   await delay(200);
   expect(res).toBe("t1-30");
 
   res = "";
   task2(20).catch(handler("t1"));
-  await delay();
   await delay(200);
   expect(res).toBe(`t1-"error-20"`);
 
@@ -219,12 +208,15 @@ test("multiple task().promise", async () => {
   const task2 = act.filter(async (n) => n > 0).task((n) => n * 3);
 
   task1(20).then(handler("pt1"));
-  await delay(10);
+  await delay();
+  await delay();
   expect(res).toBe(`pt1-40`);
 
   res = "";
   task2(20).then(handler("pt2"));
-  await delay(10);
+  await delay();
+  await delay();
+  await delay();
   expect(res).toBe(`pt2-60`);
 });
 
@@ -237,20 +229,18 @@ test("sync task", async () => {
   task1.done.watch(handler("t1d"));
   task1.end.watch(handler("t1e"));
   task1(10)
-    .then(handler("et1"))
+    .then(handler("pt1"))
     .finally(() => {
       res += " done";
     });
 
-  expect(res).toBe("a1-10");
-  await delay();
   expect(res).toBe("a1-10 t1-10");
   await delay();
-  expect(res).toBe("a1-10 t1-10 t1d-20-10 t1e-10");
+  expect(res).toBe("a1-10 t1-10 t1d-20-10");
   await delay();
-  expect(res).toBe("a1-10 t1-10 t1d-20-10 t1e-10 et1-20");
+  expect(res).toBe("a1-10 t1-10 t1d-20-10 t1e-10 pt1-20");
   await delay();
-  expect(res).toBe("a1-10 t1-10 t1d-20-10 t1e-10 et1-20 done");
+  expect(res).toBe("a1-10 t1-10 t1d-20-10 t1e-10 pt1-20 done");
 });
 
 test("task pending sync", async () => {
@@ -264,15 +254,17 @@ test("task pending sync", async () => {
   task(10).then(fn);
   task(10).then(fn);
   task(10).then(fn);
-  await delay();
   expect(res).toBe("t1-10 t1-10 t1-10");
+  expect(fn).toHaveBeenCalledTimes(0);
 
   res = "";
   await delay();
-  expect(res).toBe("t1d-20-10 t1e-10 t1d-20-10 t1e-10 t1d-20-10 t1e-10");
+  expect(res).toBe("t1d-20-10 t1d-20-10 t1d-20-10");
+  await delay();
+  await delay();
+  expect(res).toBe("t1d-20-10 t1d-20-10 t1d-20-10 t1e-10 t1e-10 t1e-10");
 
   res = "";
-  expect(fn).toHaveBeenCalledTimes(0);
   await delay();
   expect(fn).toHaveBeenCalledTimes(3);
 });

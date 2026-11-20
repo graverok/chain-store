@@ -17,14 +17,17 @@ const resolver = <T>(
   param: Promise<T> | T,
   done: (v: T) => void,
   fail: (e: Error) => void,
-  awaited?: number,
+  end?: () => void,
 ) => {
   try {
-    param instanceof Promise
-      ? param.then(done).catch(fail)
-      : awaited
-        ? Promise.resolve(param).then(done)
-        : done(param);
+    (param instanceof Promise
+      ? param
+      : end
+        ? Promise.resolve(param)
+        : done(param)
+    )
+      ?.then(done, fail)
+      .finally(end);
   } catch (err) {
     fail(err as Error);
   }
@@ -69,35 +72,29 @@ export const invoke = (
   return error
     ? forward(input, error)
     : type === 2
-      ? Promise.resolve().then(() => {
-          const result = (fn as Function)(input);
-
-          const unique = !(
-            result instanceof Promise && (config[3] as Set<any>)?.has(result)
-          );
-          unique &&
-            (config[3] = config[3] ?? new Set()) &&
-            (config[3] as Set<any>).add(result as Promise<any>);
-
+      ? (() => {
           (emt as Emitter)?.(input);
 
-          unique &&
+          const result = (fn as Function)(input);
+
+          if (!(
+            result instanceof Promise && (config[3] as Set<any>)?.has(result)
+          )) {
+            (config[3] = config[3] ?? new Set()) &&
+              (config[3] as Set<any>).add(result as Promise<any>);
+
             resolver(
               result,
-              (out) => {
-                (rest[1] as Emitter)?.(out, input);
+              (out) => (rest[1] as Emitter)?.(out, input),
+              (error) => (rest[2] as Emitter)?.(error, input),
+              () => {
                 (rest[3] as Emitter)?.(input);
                 (config[3] as Set<any>)?.delete(result);
               },
-              (error) => {
-                (rest[2] as Emitter)?.(error, input);
-                (rest[3] as Emitter)?.(input);
-                (config[3] as Set<any>)?.delete(result);
-              },
-              1,
             );
-          caller === config && ret && resolver(result, ...ret, 1);
-        })
+          }
+          caller === config && ret && resolver(result, ...ret, () => {});
+        })()
       : resolver(
           fn ? fn(input) : input,
           (result) =>

@@ -532,12 +532,13 @@ The `use` hook accepts optional state mapper.
 Every chain has a queue of commands. Each `.map` or `.filter` call adds a command to the queue. Actions with fewer commands run earlier.
 
 ```js
-const act1 = chain();                     /* 0 commands */
-const act2 = act1.map().map();            /* 2 commands */
-const act3 = act1.map()                   /* 1 command */
-const act4 = act2.map()                   /* 3 commands */
+const act1 = chain();                     // 0 commands 
+const act2 = act1.map().map();            // 2 commands 
+const act3 = act1.map()                   // 1 command 
+const task1 = act3.task()                 // 2 commands 
+const act4 = act2.map()                   // 3 commands 
 
-/* act1 -> act3 -> act2 -> act4 */
+/* act1 -> act3 -> act2 -> task1 -> act4 -> task1.done -> task1.end */
 ```
 
 A command emits its output *before* passing it down the chain. As a result, all watchers are notified before the next command runs.
@@ -548,8 +549,6 @@ const $store = store<number>(0).on(act1, (_, n) => n);
 
 const act2 = act1.map(() => $store.get());  /* returns act1 output value */
 ```
-
-Commands run synchronously, except for tasks. Tasks start after a promise delay (`Promise.resolve().then(...)`), so they run after all actions in the chain have executed. This does not apply to asynchronous `.map` and `.filter` commands.
 
 <br/>
 
