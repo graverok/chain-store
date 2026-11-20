@@ -78,10 +78,13 @@ export const invoke = (
           const result = (fn as Function)(input);
 
           if (!(
-            result instanceof Promise && (config[3] as Set<any>)?.has(result)
+            result instanceof Promise &&
+            (config[3] as Set<Promise<unknown>>)?.has(result)
           )) {
             (config[3] = config[3] ?? new Set()) &&
-              (config[3] as Set<any>).add(result as Promise<any>);
+              (config[3] as Set<Promise<unknown>>).add(
+                result as Promise<unknown>,
+              );
 
             resolver(
               result,
@@ -89,7 +92,7 @@ export const invoke = (
               (error) => (rest[2] as Emitter)?.(error, input),
               () => {
                 (rest[3] as Emitter)?.(input);
-                (config[3] as Set<any>)?.delete(result);
+                (config[3] as Set<Promise<unknown>>)?.delete(result);
               },
             );
           }

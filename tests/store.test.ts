@@ -227,3 +227,10 @@ test("part stores", async () => {
   $store.set({ name: "john" });
   expect(mapper).toHaveBeenCalledTimes(2);
 });
+
+test("store life cycle", () => {
+  const $store = store({ value: 1 });
+  $store.watch((state) => expect(state).toBe($store.get()));
+
+  $store.set({ value: 2 });
+});

@@ -11,9 +11,10 @@ const create = <State, Parent extends unknown | void = void>(
   const emt = [] as Emitter[];
 
   const set = (next: State, ...args: any[]) => {
-    next !== state && emt[0]?.call(args, next);
-    maps?.forEach((mapper, set) => set(mapper(next)));
+    const unique = next !== state;
     state = next;
+    unique && emt[0]?.call(args, state);
+    maps?.forEach((mapper, set) => set(mapper(state)));
   };
 
   const store = {
