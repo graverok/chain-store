@@ -177,3 +177,26 @@ test("action map/filter => void 0", () => {
   expect(fn1).toHaveBeenCalledTimes(0);
   expect(fn2).toHaveBeenLastCalledWith(void 0);
 });
+
+test("undefined rejection", async () => {
+  res = "";
+  const task = chain<number>()
+    .map(
+      () =>
+        new Promise<number>((_, f) => {
+          f();
+        }),
+    )
+    .task((n) => n);
+
+  const fn = vi.fn();
+  const fn2 = vi.fn();
+  task.watch(fn);
+  task.done.watch(fn);
+  task.fail.watch(fn);
+  task.end.watch(fn);
+  task(10).then(fn).catch(fn2);
+  await delay(1);
+  expect(fn).toHaveBeenCalledTimes(0);
+  expect(fn2).toHaveBeenCalledTimes(1);
+});

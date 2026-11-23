@@ -20,11 +20,9 @@ const resolver = <T>(
   end?: () => void,
 ) => {
   try {
-    (payload instanceof Promise
-      ? payload
-      : end
-        ? Promise.resolve(payload)
-        : done(payload)
+    ((end ?? payload instanceof Promise)
+      ? Promise.resolve(payload)
+      : done(payload)
     )
       ?.then(done, fail)
       .finally(end);
@@ -55,20 +53,21 @@ export const invoke = (
   config: Config,
   init?: Config,
   external?: External,
-  error?: Error | undefined,
+  aborted?: number | boolean,
 ) => {
   const [type, fn, emt, ...rest] = config;
 
-  const forward = (out: unknown, error?: Error | undefined) => {
-    if (type === 2) return init === config && external?.[1](error as Error);
+  const forward = (out: unknown, aborted?: number | boolean) => {
     (rest as Config[]).forEach((config) =>
-      queue.push(() => invoke(out, queue, config, init, external, error)),
+      queue.push(() => invoke(out, queue, config, init, external, aborted)),
     );
     rest.forEach(() => (queue[queue[0]++] as () => void)());
   };
 
-  return error
-    ? forward(payload, error)
+  aborted
+    ? type === 2
+      ? init === config && external?.[1](payload as Error)
+      : forward(payload, aborted)
     : type === 2
       ? (() => {
           const response = (fn as Function)(payload);
@@ -97,12 +96,9 @@ export const invoke = (
           fn ? fn(payload) : payload,
           (result) =>
             type && !result
-              ? forward(
-                  payload,
-                  Object.assign(new Error(), { name: "ChainFilter" }),
-                )
+              ? forward(Object.assign(new Error(), { name: "ChainFilter" }), 1)
               : (emt?.(type ? payload : result) || 1) &&
                 forward(type ? payload : result),
-          (error) => forward(payload, error),
+          (error) => forward(error, 1),
         );
 };

@@ -3,11 +3,11 @@ export const debounce = <Params, Result>(
   fn: (params: Params) => Result,
 ) => {
   let tmr: number = 0;
-  let reject: null | (() => void) = null;
+  let reject: null | ((error: Error) => void) = null;
 
   return (params: Params) => {
     tmr && clearTimeout(tmr);
-    reject?.();
+    reject?.(Object.assign(new Error(), { name: "ChainFilter" }));
 
     return new Promise<Result>((resolve, rej) => {
       reject = rej;

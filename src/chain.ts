@@ -15,10 +15,9 @@ const create = <Input = void, Output = Input>(
       let external: External | undefined = void 0;
       let promise: Promise<unknown> | undefined = void 0;
       if (type === 2) {
-        external = [] as unknown as External;
-        promise = new Promise<unknown>((...args) =>
-          (external as External).push(...args),
-        );
+        promise = new Promise<unknown>((...args) => {
+          external = args;
+        });
         promise.catch(() => {});
       }
       invoke(input, [1], start ?? config, config, external);

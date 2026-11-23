@@ -3,13 +3,13 @@ export const throttle = <Params, Result>(
   fn: (params: Params) => Result,
 ) => {
   let resolve: void | ((result: Result) => void);
-  let reject: void | (() => void);
+  let reject: void | ((error: Error) => void);
   let stored: Params;
   let tmr: number;
 
   return (params: Params) => {
     if (tmr) {
-      reject?.();
+      reject?.(Object.assign(new Error(), { name: "ChainFilter" }));
       stored = params;
       return new Promise<Result>((res, rej) => {
         resolve = res;

@@ -35,13 +35,13 @@ async function measure(files) {
 }
 
 const core = "./dist/index.js";
-const plugins = ["react", "preact", "solid", "vue", "angular"];
+const plugins = ["angular", "preact", "react", "solid", "vue"];
 const titles = [
-  "react:\t  ",
+  "angular:  ",
   "preact:\t  ",
+  "react:\t  ",
   "solid:\t  ",
   "vue:\t  ",
-  "angular:  ",
 ];
 
 const coreSize = await measure([core]);

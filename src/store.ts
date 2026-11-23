@@ -57,7 +57,6 @@ const create = <State, Parent extends unknown | void = void>(
         }
         return store;
       },
-
       set,
     }),
   } as unknown as Parent extends void ? Store<State> : StorePart<State>;
