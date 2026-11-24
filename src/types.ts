@@ -1,5 +1,3 @@
-import { Watcher } from "./lib.js";
-
 export type Disposer = () => void;
 
 export interface Unit<Params = any, Ext = void> {
@@ -52,7 +50,7 @@ export interface Task<Input = void, Params = Input, Result = unknown>
 export interface StorePart<State> extends Unit<State> {
   get(): State;
   map<Selected>(mapper: (state: State) => Selected): StorePart<Selected>;
-  subscribe(watcher: Watcher): Disposer;
+  subscribe(watcher: (state: State) => void): Disposer;
   off: Disposer;
 }
 
