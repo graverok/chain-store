@@ -1,6 +1,6 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./docs/chain-store-dark.svg?sanitize=true"/>
-  <img src="./docs/chain-store-light.svg?sanitize=true#gh-light-mode" />
+  <img src="./docs/chain-store-light.svg?sanitize=true#gh-light-mode" height="50" />
 </picture>
 
 
